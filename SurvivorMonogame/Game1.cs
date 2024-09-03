@@ -9,6 +9,9 @@ using SharpDX.MediaFoundation;
 using Accessibility;
 using Microsoft.Xna.Framework.Content;
 using SharpDX.DXGI;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
@@ -24,9 +27,11 @@ namespace SurvivorMonogame
         public int dmg = 25;
         public int speed = 3;
         public int timeAlive = 0;
+        
         Texture2D tex;
         public Bullet(int x, int y, int xd, int yd, Texture2D te, int size=10, int dmg = 25)
         {
+            
 
             this.x = x;
             this.y = y;
@@ -36,7 +41,7 @@ namespace SurvivorMonogame
             this.dmg = dmg;
             this.tex = te;
         }
-        public void Update()
+        public void Update()    
         {
             x += dx*speed;
             y += dy*speed;
@@ -156,6 +161,21 @@ namespace SurvivorMonogame
             this.y = y; 
         }
 
+        public bool AreRectanglesTouching(Rectangle r1, Rectangle r2)
+        {
+
+            if (r1.X + r1.Width == r2.X)
+                return true;
+            if (r1.Y + r1.Height == r2.Y)
+                return true;
+            if (r1.X == r2.X + r2.Width)
+                return true;
+            if (r1.Y == r2.Y + r2.Height)
+                return true;
+
+            return false;
+        }
+
         public void Update(Map m, int px, int py)
         {
             int y_tile = y / m.size;
@@ -190,7 +210,7 @@ namespace SurvivorMonogame
                         if (j < 0 | j > m.w)
                             continue;
                         Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
-                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(x, ny, size, size)))
+                        if (m.map[i][j] == 1 && (tempRect.Intersects(new Rectangle(x, ny, size, size)))) //| AreRectanglesTouching(tempRect, new Rectangle(x, ny, size, size))))
                         {
                             flag = false;
                         }
@@ -217,8 +237,8 @@ namespace SurvivorMonogame
                 {
                     for (int j = x_tile - 1; j < x_tile + 2; j++)
                     {
-                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
-                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(nx, oy, 30, 30)))
+                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, size, size);
+                        if (m.map[i][j] == 1 && (tempRect.Intersects(new Rectangle(nx, oy, size, size))))// | AreRectanglesTouching(tempRect, new Rectangle(nx, oy, size, size))))
                         {
                             flag = false;
                         }
@@ -246,16 +266,31 @@ namespace SurvivorMonogame
         public Texture2D rectTexture;
         public Texture2D bulletTex;
         public List<Weapon> weapons = new List<Weapon> { };
+        public int character = 0;
+        public string currentAnimation = "run";
+        public int currentFrame = 0;
+        public Texture2D spriteSheet;
 
-         
+        public Dictionary<string, int> animationTimes = new Dictionary<string, int> { };
+        public Dictionary<string, int> animationFrames = new Dictionary<string, int> { };
+        public List<string> animationNames = new List<string> { "run" };
+        public Dictionary<string, Texture2D> loadedAnimations = new Dictionary<string, Texture2D> {};
+
+
+
         public Player(Texture2D recTex, Texture2D bulletTex)
         {
             rectTexture = recTex;
-            weapons.Add(new Weapon(25, 15, bulletTex));
+            weapons.Add(new Weapon(25, 10005, bulletTex));
+            animationTimes["char_0!run"] = 100;
+
+            
         }
 
         public void Update(Map m)
         {
+            currentFrame += 1;
+            currentFrame = currentFrame % animationTimes[$"char_0!{currentAnimation}"];
             for (int i = 0; i < weapons.Count; i++)
             {
                 weapons[i].Update(x,y,size);
@@ -290,7 +325,7 @@ namespace SurvivorMonogame
                     for (int j = x_tile - 1; j < x_tile + 2; j++)
                     {
                         Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
-                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(x, ny, size, size)))
+                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(ox, ny, size, size)))
                         {
                             flag = false;
                         }
@@ -320,7 +355,7 @@ namespace SurvivorMonogame
                     for (int j = x_tile - 1; j < x_tile + 2; j++)
                     {
                         Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
-                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(nx,ny,30,30)))
+                        if (m.map[i][j] == 1 && tempRect.Intersects(new Rectangle(nx,oy,30,30)))
                         {
                             flag = false;
                         }
@@ -340,7 +375,12 @@ namespace SurvivorMonogame
             {
                 weapons[i].Draw(_spb, cx, cy);
             }
-            _spb.Draw(rectTexture, new Rectangle(x-cx, y-cy, size, size), Color.White);
+
+            int img = Convert.ToInt32((Convert.ToDecimal(currentFrame) / Convert.ToDecimal(animationTimes[$"char_0!{currentAnimation}"])) * animationFrames[$"char_0!{currentAnimation}"])-1;
+            if (img < 0)
+                img = 0;
+            _spb.Draw(loadedAnimations[$"char_0!{currentAnimation}!{img}"], new Rectangle(x-cx, y-cy, size, size), Color.White);
+            //_spb.Draw(rectTexture, new Rectangle(x-cx, y-cy, size, size), Color.White);
         }
     }
     public static class Inputs
@@ -445,8 +485,8 @@ namespace SurvivorMonogame
             int y = -1;
             while (true)
             {
-                x = RNG.Next(1, m1.w - 1);
-                y = RNG.Next(1, m1.h - 1);
+                x = RNG.Next(1, m1.w/4 - 1);
+                y = RNG.Next(1, m1.h/4 - 1);
                 if (m1.map[y][x] == 0)
                 {
                     return new Vector2(x, y);
@@ -454,12 +494,36 @@ namespace SurvivorMonogame
             }
         }
 
+        public Dictionary<string, List<Rectangle>> LoadSpriteSheet()
+        {
+            Dictionary<String, List<Rectangle>> sprites = new Dictionary<string, List<Rectangle>> { };
+            List<string> names = new List<string> { "idle", "run","sword_idle","sword_run","sword_jump","sword_falling","sword_use_item","sword_attack","take_hit","death", "death", "death" };
+            List<int> lenghts = new List<int> {6,8,6,8,3,5,10,10,5,12,12,6};
+            
+            for (int i = 0; i < names.Count; i++)
+            {
+                sprites[names[i]] = new List<Rectangle> { };
+            }
+            for (int y = 0; y < names.Count; y++)
+            {
+                for (int x = 0; x < lenghts[y]; x++)
+                {
+                    sprites[names[y]].Add(new Rectangle(x * 128, y * 128, 128, 128));
+                }
+            }
+
+            return sprites;
+        }
+
         protected override void Initialize()
         {
             Inputs.init();
 
+            
 
 
+
+            
             startRect = new Texture2D(GraphicsDevice, 1, 1);
             startRect.SetData(new Color[] { Color.DarkGray });
 
@@ -470,9 +534,9 @@ namespace SurvivorMonogame
             red.SetData(new Color[] { Color.Red });
 
 
-            Texture2D playerRect = new Texture2D(GraphicsDevice, 1, 1); 
+            Texture2D playerRect = new Texture2D(GraphicsDevice, 1, 1);
             playerRect.SetData(new Color[] { Color.ForestGreen });
-
+            
             map1 = new Map(100, 100);
             map1.bindings[0] = grass;
             map1.bindings[1] = startRect;
@@ -484,6 +548,26 @@ namespace SurvivorMonogame
             player.y = Convert.ToInt32(pPos.Y) * map1.size;// + map1.size / 2;
             player.cy = Convert.ToInt32(pPos.Y) * map1.size-250;
             player.bulletTex = red;
+            Texture2D spritesheet = Content.Load<Texture2D>("Jotem spritesheet");
+            player.spriteSheet = spritesheet;
+
+            for (int i = 0; i < player.animationNames.Count; i++)
+            {
+                int length = Directory.GetFiles($"Assets\\Animated\\FbF\\Player\\char_0\\{player.animationNames[i]}", "*", SearchOption.TopDirectoryOnly).Length;
+                player.animationFrames[$"char_0!{player.animationNames[i]}"] = length;
+
+                List<string> files = Directory.GetFiles($"Assets\\Animated\\FbF\\Player\\char_0\\{player.animationNames[i]}", "*", SearchOption.TopDirectoryOnly).ToList<string>();
+                for (int j = 0; j < length; j++)
+                {
+                    string[] tokens = files[j].Split(new[] { "\\" }, StringSplitOptions.None);
+                    player.loadedAnimations[$"{tokens[length - 2]}!{tokens[length - 1]}!{j}"] = Content.Load<Texture2D>($"{tokens[length].Replace(".png","")}");
+                }
+            }
+
+
+
+
+
             for (int i = 0; i < 3; i++)
             {
                 Vector2 enemyPos = FindSpawn(map1);
@@ -493,14 +577,16 @@ namespace SurvivorMonogame
             
             
 
+
             startButton = new Button(new Rectangle(100,100,100,50), "Start", startRect, Color.DarkGray, Color.DarkGoldenrod);
+            buttons.Add(startButton);
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            buttons.Add(startButton);
+            
 
 
         }

@@ -12,6 +12,63 @@
     <ApplicationIcon>Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Assets\Animated\FbF\Player\Character_0\**" />
+    <EmbeddedResource Remove="Assets\Animated\FbF\Player\Character_0\**" />
+    <None Remove="Assets\Animated\FbF\Player\Character_0\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr1.png" />
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr2.png" />
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr3.png" />
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr4.png" />
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr5.png" />
+    <None Remove="Assets\Animated\FbF\Player\char_0\run\kr6.png" />
+    <None Remove="Content\kr1.png" />
+    <None Remove="Content\kr2.png" />
+    <None Remove="Content\kr3.png" />
+    <None Remove="Content\kr4.png" />
+    <None Remove="Content\kr5.png" />
+    <None Remove="Content\kr6.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr1.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr2.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr3.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr4.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr5.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Animated\FbF\Player\char_0\run\kr6.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr1.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr2.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr3.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr4.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr5.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\kr6.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.1.303" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
   </ItemGroup>
