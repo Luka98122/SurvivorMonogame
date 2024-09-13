@@ -12,6 +12,7 @@ using SharpDX.DXGI;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
@@ -140,8 +141,12 @@ namespace SurvivorMonogame
         public List<List<int>> map = new List<List<int>> { };
         public int w;
         public int h;
-        public int size = 30;
-
+        //public int size = 30;
+        public int sw = 49;
+        public int sh = 99;
+        public Texture2D terrain;
+        public int tsize = 141;
+        public Dictionary<string, Texture2D> tiles;
         public int percentage;
         
         public float getPercentage()
@@ -201,6 +206,59 @@ namespace SurvivorMonogame
             }
         }
 
+        public string whichTile(int x, int y)
+        {
+
+            // Top row
+            if (map[y][x-1] == 0 && map[y-1][x] == 0 && map[y][x+1]!=0 && map[y + 1][x] != 0) // Top left corner
+            {
+                return "-1,-1";
+            }
+            if (map[y][x + 1] == 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // Top right corner
+            {
+                return "1,-1";
+            }
+            if (map[y][x + 1] != 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // top center
+            {
+                return "0,-1";
+            }
+
+
+            // Center row
+            if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] == 0 && map[y + 1][x] != 0) // left center
+            {
+                return "-1,0";
+            }
+            if (map[y][x - 1] != 0 && map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y + 1][x] != 0) // Center
+            {
+                return "0,0";
+            }
+            if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // right center
+            {
+                return "1,0";
+            }
+
+            // Bottom row
+            if (map[y][x - 1] == 0 && map[y - 1][x] != 0 && map[y][x + 1] != 0 && map[y + 1][x] == 0) // Bot left corner
+            {
+                return "-1,1";
+            }
+            if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // Bot right corner
+            {
+                return "1,1";
+            }
+            if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // bot center
+            {
+                return "0,1";
+            }
+
+
+
+
+            return "solo";
+            return "Error: Tile-picking logic did not pick any tile. Function: Map.whichTile";
+        }
+
         public Map(int w, int h, bool random=true, string randomType="clump")
         {
             this.w = w;
@@ -258,16 +316,36 @@ namespace SurvivorMonogame
         } 
         public void Draw(SpriteBatch _spb, int cx, int cy)
         {
+            for (int i = -5; i < sw*w / tsize + 5; i++)
+            {
+                for (int j = -5; j < sh*h / tsize + 1; j++)
+                {
+                    _spb.Draw(terrain, new Rectangle(i * tsize, j * tsize, tsize, tsize), Color.White);
+                }
+            }
+
             for (int i = 0; i < w; i++)
             {
                 
+                
+                
+                
+                
                 for (int j = 0; j < h; j++)
                 {
-                    if (map[i][j] >= 1)
-                    _spb.Draw(bindings[1],new Rectangle(j*size-cx,i*size-cy,size,size),Color.AliceBlue);
+                    if (map[i][j] >= 1 && i>=1 && i<=w-2 && j>=1 && j<=h-2)
+                    {
+                        string tile = whichTile(j, i);
+                        if (tile == "None")
+                        _spb.Draw(bindings[1], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
+                        else
+                        {
+                            _spb.Draw(tiles[tile], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
+                        }
+                    }
                     else
                     {
-                        _spb.Draw(bindings[0], new Rectangle(j * size - cx, i * size - cy, size, size), Color.AliceBlue);
+                        //_spb.Draw(bindings[0], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
                     }
                 }
             }
@@ -306,8 +384,8 @@ namespace SurvivorMonogame
 
         public void Update(Map m, int px, int py)
         {
-            int y_tile = y / m.size;
-            int x_tile = x / m.size;
+            int y_tile = y / m.sh;
+            int x_tile = x / m.sw;
 
 
             int ny = y;
@@ -337,7 +415,7 @@ namespace SurvivorMonogame
                     {
                         if (j < 0 | j > m.w)
                             continue;
-                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
+                        Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && (tempRect.Intersects(new Rectangle(x, ny, size, size)))) //| AreRectanglesTouching(tempRect, new Rectangle(x, ny, size, size))))
                         {
                             flag = false;
@@ -369,7 +447,7 @@ namespace SurvivorMonogame
                     {
                         if (j < 0 | j > m.w)
                             continue;
-                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, size, size);
+                        Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && (tempRect.Intersects(new Rectangle(nx, oy, size, size))))// | AreRectanglesTouching(tempRect, new Rectangle(nx, oy, size, size))))
                         {
                             flag = false;
@@ -421,7 +499,7 @@ namespace SurvivorMonogame
         public Player(Texture2D recTex, Texture2D bulletTex, Dictionary<String,List<Rectangle>> rects, Dictionary<String, List<Rectangle>> INVrects)
         {
             rectTexture = recTex;
-            weapons.Add(new Weapon(25, 12, bulletTex));
+            weapons.Add(new Weapon(25, 12000, bulletTex));
             animationTimes["char_0!death"] = 150;
             animationTimes["char_0!sword_idle"] = 45;
             animationTimes["char_0!run"] = 30;
@@ -447,7 +525,7 @@ namespace SurvivorMonogame
             }
             if (lastFrameMoving >= 900)
             {
-                currentAnimation = "death";
+                // currentAnimation = "death";
             }
             currentFrame += 1;
             currentFrame = currentFrame % animationTimes[$"char_0!{currentAnimation}"];
@@ -455,8 +533,8 @@ namespace SurvivorMonogame
             {
                 weapons[i].Update(x,y,size, ex, ey);
             }
-            int y_tile = y / m.size;
-            int x_tile = x / m.size;
+            int y_tile = y / m.sh;
+            int x_tile = x / m.sw;
 
 
             int ny = y;
@@ -490,10 +568,11 @@ namespace SurvivorMonogame
                         continue;
                     for (int j = x_tile - 1; j < x_tile + 2; j++)
                     {
-                        m.map[i][j] -= 3;
+                        
                         if (j < 0 | j > m.w)
                             continue;
-                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
+                        m.map[i][j] -= 3;
+                        Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(ox, ny, size, size)))
                         {
                             flag = false;
@@ -534,7 +613,7 @@ namespace SurvivorMonogame
                     {
                         if (j < 0 | j > m.w)
                             continue;
-                        Rectangle tempRect = new Rectangle(j * m.size, i * m.size, m.size, m.size);
+                        Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(nx,oy,30,30)))
                         {
                             flag = false;
@@ -659,6 +738,7 @@ namespace SurvivorMonogame
         public List<Enemy> enemies = new List<Enemy> { };
         public Map map1;
         public Texture2D main_background;
+        public Texture2D terrain;
 
         public int W = 1920;
         public int H = 1080;
@@ -770,26 +850,41 @@ namespace SurvivorMonogame
 
             Texture2D playerRect = new Texture2D(GraphicsDevice, 1, 1);
             playerRect.SetData(new Color[] { Color.ForestGreen });
-            
+
             map1 = new Map(100, 100);
             map1.bindings[0] = grass;
             map1.bindings[1] = startRect;
 
-            Dictionary<String,List<Rectangle>> pSprites = LoadSpriteSheet();
+            Dictionary<String, List<Rectangle>> pSprites = LoadSpriteSheet();
             Dictionary<String, List<Rectangle>> InvPSprites = LoadInvertedSpriteSheet();
 
-            player = new Player(playerRect,red,pSprites,InvPSprites);
+            player = new Player(playerRect, red, pSprites, InvPSprites);
             Vector2 pPos = FindSpawn(map1);
-            player.x = Convert.ToInt32(pPos.X) * map1.size;// + map1.size / 2;
-            player.cx = Convert.ToInt32(pPos.X) * map1.size-250;
-            player.y = Convert.ToInt32(pPos.Y) * map1.size;// + map1.size / 2;
-            player.cy = Convert.ToInt32(pPos.Y) * map1.size-250;
+            player.x = Convert.ToInt32(pPos.X) * map1.sw;// + map1.size / 2;
+            player.cx = Convert.ToInt32(pPos.X) * map1.sw - 250;
+            player.y = Convert.ToInt32(pPos.Y) * map1.sh;// + map1.size / 2;
+            player.cy = Convert.ToInt32(pPos.Y) * map1.sh - 250;
             player.bulletTex = red;
             Texture2D spritesheet = Content.Load<Texture2D>("Jotem spritesheet");
             Texture2D invspritesheet = Content.Load<Texture2D>("JotemInverted");
 
             player.spriteSheet = spritesheet;
             player.invSpriteSheet = invspritesheet;
+
+            Dictionary<string, Texture2D> m_tiles = new Dictionary<string, Texture2D> { };
+            for (int i = -1; i < 2; i++)
+            {
+                for (int j = -1; j < 2; j++)
+                {
+                    m_tiles[$"{i},{j}"] = Content.Load<Texture2D>($"{i},{j}");
+
+                }
+            }
+            m_tiles["solo"] = Content.Load<Texture2D>("solo");
+            map1.tiles = m_tiles;
+
+
+
 
             /*for (int i = 0; i < player.animationNames.Count; i++)
             {
@@ -812,7 +907,7 @@ namespace SurvivorMonogame
             {
                 Vector2 enemyPos = FindSpawn(map1);
 
-                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X)*map1.size, Convert.ToInt32(enemyPos.Y)*map1.size, red));
+                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, red));
             }
             
             
@@ -829,8 +924,8 @@ namespace SurvivorMonogame
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             main_background = Content.Load<Texture2D>("CaveBackground");
-
-
+            terrain = Content.Load<Texture2D>("terrain");
+            map1.terrain = terrain;
         }
 
         protected override void Update(GameTime gameTime)
@@ -879,14 +974,14 @@ namespace SurvivorMonogame
                             {
                                 Vector2 enemyPos = FindSpawn(map1);
 
-                                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X) * map1.size, Convert.ToInt32(enemyPos.Y) * map1.size, enemies[j].rectTexture));
+                                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X) * map1.sw, Convert.ToInt32(enemyPos.Y) * map1.sh, enemies[j].rectTexture));
                                 enemies.RemoveAt(j);
 
                             }
                         }
 
-                        int mx = weapon.bullets[i].x / map1.size;
-                        int my = weapon.bullets[i].y / map1.size;
+                        int mx = weapon.bullets[i].x / map1.sw;
+                        int my = weapon.bullets[i].y / map1.sh;
                         if (mx < 0 | mx > map1.w | my < 0 | my > map1.h)
                         {
 
