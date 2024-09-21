@@ -12,7 +12,7 @@ using SharpDX.DXGI;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-
+    
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
@@ -135,6 +135,36 @@ namespace SurvivorMonogame
         }
     }
 
+    public class TilePattern
+    {
+        public List<List<int>> pattern = new List<List<int>>() { };
+        public string id = "";
+        public TilePattern(List<List<int>> pattern, string id)
+        {
+            this.pattern = pattern;
+            this.id = id;
+        }
+
+        public bool equal(TilePattern other) {
+
+            for (int y1 = -1; y1 < 2; y1++)
+            {
+                for (int x1 = -1; x1 < 2; x1++)
+                {
+                    if (pattern[y1+1][x1+1] == 2)
+                    {
+                        continue;
+                    }
+                    if (other.pattern[y1+1][x1+1] != pattern[y1+1][x1+1])
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
     public class Map
     {
         public Dictionary<int, Texture2D> bindings = new Dictionary<int, Texture2D>{};
@@ -148,6 +178,9 @@ namespace SurvivorMonogame
         public int tsize = 141;
         public Dictionary<string, Texture2D> tiles;
         public int percentage;
+        public List<TilePattern> patterns = new List<TilePattern> { };
+
+        public List<List<string>> tileToDraw = new List<List<string>> { };
         
         public float getPercentage()
         {
@@ -208,55 +241,96 @@ namespace SurvivorMonogame
 
         public string whichTile(int x, int y)
         {
+            if (true == false)
+            {
+                TilePattern ttile = new TilePattern(new List<List<int>> {
+                new List<int> {},
+                new List<int> {},
+                new List<int> {}
+            }, "null");
+                for (int y1 = -1; y1 < 2; y1++)
+                {
+                    for (int x1 = -1; x1 < 2; x1++)
+                    {
+                        if (map[y + y1][x + x1] == 0)
+                        {
+                            ttile.pattern[y1 + 1].Add(0);
+                        }
+                        else
+                        {
+                            ttile.pattern[y1 + 1].Add(1);
+                        }
+                    }
+                }
 
-            // Top row
-            if (map[y][x-1] == 0 && map[y-1][x] == 0 && map[y][x+1]!=0 && map[y + 1][x] != 0) // Top left corner
-            {
-                return "-1,-1";
+                TilePattern ttile2 = new TilePattern(new List<List<int>> {
+                new List<int> {0,1,0},
+                new List<int> {0,1,0},
+                new List<int> {0,1,0}
+            }, "null");
+
+                foreach (TilePattern tp in patterns)
+                {
+                    if (tp.equal(ttile) == true)
+                    {
+                        return tp.id;
+                    }
+                }
             }
-            if (map[y][x + 1] == 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // Top right corner
+            else
             {
-                return "1,-1";
-            }
-            if (map[y][x + 1] != 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // top center
-            {
-                return "0,-1";
-            }
+
+                // Top row
+                if (map[y][x - 1] == 0 && map[y - 1][x] == 0 && map[y][x + 1] != 0 && map[y + 1][x] != 0) // Top left corner
+                {
+                    return "-1,-1";
+                }
+                if (map[y][x + 1] == 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // Top right corner
+                {
+                    return "1,-1";
+                }
+                if (map[y][x + 1] != 0 && map[y - 1][x] == 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // top center
+                {
+                    return "0,-1";
+                }
 
 
-            // Center row
-            if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] == 0 && map[y + 1][x] != 0) // left center
-            {
-                return "-1,0";
-            }
-            if (map[y][x - 1] != 0 && map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y + 1][x] != 0) // Center
-            {
-                return "0,0";
-            }
-            if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // right center
-            {
-                return "1,0";
-            }
+                // Center row
+                if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] == 0 && map[y + 1][x] != 0) // left center
+                {
+                    return "-1,0";
+                }
+                if (map[y][x - 1] != 0 && map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y + 1][x] != 0) // Center
+                {
+                    return "0,0";
+                }
+                if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0) // right center
+                {
+                    return "1,0";
+                }
 
-            // Bottom row
-            if (map[y][x - 1] == 0 && map[y - 1][x] != 0 && map[y][x + 1] != 0 && map[y + 1][x] == 0) // Bot left corner
-            {
-                return "-1,1";
+                // Bottom row
+                if (map[y][x - 1] == 0 && map[y - 1][x] != 0 && map[y][x + 1] != 0 && map[y + 1][x] == 0) // Bot left corner
+                {
+                    return "-1,1";
+                }
+                if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // Bot right corner
+                {
+                    return "1,1";
+                }
+                if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // bot center
+                {
+                    return "0,1";
+                }
+
+                if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] != 0 && map[y + 1][x + 1] != 0) // At end of wall right corner
+                {
+                    return "1,-1";
+                }
+
+                return "solo";
+                return "Error: Tile-picking logic did not pick any tile. Function: Map.whichTile";
             }
-            if (map[y][x + 1] == 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // Bot right corner
-            {
-                return "1,1";
-            }
-            if (map[y][x + 1] != 0 && map[y - 1][x] != 0 && map[y][x - 1] != 0 && map[y + 1][x] == 0) // bot center
-            {
-                return "0,1";
-            }
-
-
-
-
-            return "solo";
-            return "Error: Tile-picking logic did not pick any tile. Function: Map.whichTile";
         }
 
         public Map(int w, int h, bool random=true, string randomType="clump")
@@ -264,6 +338,7 @@ namespace SurvivorMonogame
             this.w = w;
             this.h = h;
             Random RNG = new Random();
+
             
             if (random && randomType == "basic")
             {
@@ -313,6 +388,20 @@ namespace SurvivorMonogame
                     }
                 }
             }
+            for (int i = 0; i < w; i++)
+            {
+                tileToDraw.Add(new List<string> { });
+                for (int j = 0; j < h; j++)
+                {
+                    if (i >= 1 && i <= w - 2 && j >= 1 && j <= h - 2)
+                    {
+
+                        string tile = whichTile(j, i);
+                        tileToDraw[i].Add(tile);
+
+                    }
+                }
+            }
         } 
         public void Draw(SpriteBatch _spb, int cx, int cy)
         {
@@ -333,9 +422,10 @@ namespace SurvivorMonogame
                 
                 for (int j = 0; j < h; j++)
                 {
-                    if (map[i][j] >= 1 && i>=1 && i<=w-2 && j>=1 && j<=h-2)
+                    if (map[i][j] >= 1 && i>=1 && i<=w-3 && j>=1 && j<=h-3)
                     {
                         string tile = whichTile(j, i);
+                        //string tile = tileToDraw[i][j];
                         if (tile == "None")
                         _spb.Draw(bindings[1], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
                         else
@@ -571,7 +661,7 @@ namespace SurvivorMonogame
                         
                         if (j < 0 | j > m.w)
                             continue;
-                        m.map[i][j] -= 3;
+                        // m.map[i][j] -= 3;
                         Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(ox, ny, size, size)))
                         {
@@ -705,23 +795,30 @@ namespace SurvivorMonogame
     public class Button
     {
         public Rectangle rect;
-        public Texture2D rectTexture;
+        public Texture2D sel;
+        public Texture2D nsel;
         public Color rectColor;
         public Color textColor;
         public string text;
-        public Button(Rectangle rect, string text, Texture2D rectTexture, Color rectColor, Color textColor)
+        public string mode;
+        public Button(Rectangle rect, string text, Texture2D sel, Texture2D nsel, Color rectColor, Color textColor)
         {
             this.rect = rect;
             this.text = text;
-            this.rectTexture = rectTexture;
+            this.sel = sel;
+            this.nsel = nsel;
             this.rectColor = rectColor;
             this.textColor = textColor;
+            this.mode = "nsel";
           
         }
         public void Draw(SpriteBatch _spb)
         {
-            
-            _spb.Draw(this.rectTexture, this.rect, this.rectColor);
+            if (mode=="sel")
+            _spb.Draw(this.sel, this.rect, this.rectColor);
+            if (mode == "nsel")
+            _spb.Draw(this.nsel, this.rect, this.rectColor);
+
         }
 
     }
@@ -738,10 +835,16 @@ namespace SurvivorMonogame
         public List<Enemy> enemies = new List<Enemy> { };
         public Map map1;
         public Texture2D main_background;
+        public Texture2D game_text;
         public Texture2D terrain;
 
         public int W = 1920;
         public int H = 1080;
+
+
+        float alpha;
+        float fadeSpeed;
+        bool isFadingIn;
 
 
         public SurvivorMonogame()
@@ -749,6 +852,9 @@ namespace SurvivorMonogame
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            alpha = 0f;
+            fadeSpeed = 0.02f; // Adjust fade speed as needed
+            isFadingIn = true;
         }
 
         public int findNearestEnemy(int x, int y)
@@ -824,8 +930,167 @@ namespace SurvivorMonogame
             return sprites;
         }
 
+        public static List<TilePattern> loadPatterns()
+        {
+            List<TilePattern> patterns = new List<TilePattern> { };
+
+            List<List<int>> template = new List<List<int>>()
+            {
+                new List<int>{0,0,0},
+                new List<int>{0,1,0},
+                new List<int>{0,0,0}
+
+            };
+
+            List<List<int>> p;
+            TilePattern tp;
+            
+            p = new List<List<int>>()
+            {
+                new List<int>{0,0,0},
+                new List<int>{0,1,0},
+                new List<int>{0,0,0}
+
+            };
+            tp = new TilePattern(p, "solo");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,2},
+                new List<int>{1,1,1},
+                new List<int>{2,0,2}
+
+            };
+            tp = new TilePattern(p, "single_horizontal");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{0,1,0},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "single_vertical");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{0,0,2},
+                new List<int>{0,1,1},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "-1,-1");
+            patterns.Add(tp);
+
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,0},
+                new List<int>{1,1,0},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "1,-1");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,2},
+                new List<int>{1,1,1},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "0,-1");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{1,1,1},
+                new List<int>{2,0,2}
+
+            };
+            tp = new TilePattern(p, "0,1");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{1,1,0},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "1,0");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{0,1,1},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "-1,0");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{0,1,1},
+                new List<int>{0,0,2}
+
+            };
+            tp = new TilePattern(p, "-1,1");
+            patterns.Add(tp);
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{1,1,2},
+                new List<int>{2,0,0}
+
+            };
+            tp = new TilePattern(p, "1,1");
+            patterns.Add(tp);
+
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,2},
+                new List<int>{0,1,0},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "vertical_end_up");
+            patterns.Add(tp);
+
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{0,1,0},
+                new List<int>{2,0,2}
+
+            };
+            tp = new TilePattern(p, "vertical_end_down");
+            patterns.Add(tp);
+
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,2},
+                new List<int>{1,1,0},
+                new List<int>{2,0,2}
+
+            };
+            tp = new TilePattern(p, "horizontal_end_right");
+            patterns.Add(tp);
+
+            p = new List<List<int>>()
+            {
+                new List<int>{2,0,2},
+                new List<int>{0,1,1},
+                new List<int>{2,0,2}
+
+            };
+            tp = new TilePattern(p, "horizontal_end_left");
+            patterns.Add(tp);
 
 
+            return patterns;
+        }
+
+        public Dictionary<string, Texture2D> buttonTexs = new Dictionary<string, Texture2D> { };
         protected override void Initialize()
         {
             Inputs.init();
@@ -834,12 +1099,6 @@ namespace SurvivorMonogame
             _graphics.PreferredBackBufferHeight = H;
             _graphics.ApplyChanges();
 
-
-
-
-
-            startRect = new Texture2D(GraphicsDevice, 1, 1);
-            startRect.SetData(new Color[] { Color.DarkGray });
 
             Texture2D grass = new Texture2D(GraphicsDevice, 1, 1);
             grass.SetData(new Color[] { Color.LawnGreen });
@@ -852,11 +1111,24 @@ namespace SurvivorMonogame
             playerRect.SetData(new Color[] { Color.ForestGreen });
 
             map1 = new Map(100, 100);
+            List<TilePattern> tilePatterns = loadPatterns();
+            map1.patterns = tilePatterns;
             map1.bindings[0] = grass;
             map1.bindings[1] = startRect;
 
             Dictionary<String, List<Rectangle>> pSprites = LoadSpriteSheet();
             Dictionary<String, List<Rectangle>> InvPSprites = LoadInvertedSpriteSheet();
+
+            
+            
+
+
+
+
+
+
+
+
 
             player = new Player(playerRect, red, pSprites, InvPSprites);
             Vector2 pPos = FindSpawn(map1);
@@ -880,28 +1152,15 @@ namespace SurvivorMonogame
 
                 }
             }
-            m_tiles["solo"] = Content.Load<Texture2D>("solo");
-            map1.tiles = m_tiles;
-
-
-
-
-            /*for (int i = 0; i < player.animationNames.Count; i++)
+            List<string> special_cave = new List<string> {"single_horizontal","single_vertical","solo","black","horizontal_end_left","horizontal_end_right","vertical_end_up","vertical_end_down"};
+            for (int i = 0; i < special_cave.Count; i++)
             {
-                int length = Directory.GetFiles($"Assets\\Animated\\FbF\\Player\\char_0\\{player.animationNames[i]}", "*", SearchOption.TopDirectoryOnly).Length;
-                player.animationFrames[$"char_0!{player.animationNames[i]}"] = length;
-
-                List<string> files = Directory.GetFiles($"Assets\\Animated\\FbF\\Player\\char_0\\{player.animationNames[i]}", "*", SearchOption.TopDirectoryOnly).ToList<string>();
-                for (int j = 0; j < length; j++)
-                {
-                    string[] tokens = files[j].Split(new[] { "\\" }, StringSplitOptions.None);
-                    player.loadedAnimations[$"{tokens[length - 2]}!{tokens[length - 1]}!{j}"] = Content.Load<Texture2D>($"{tokens[length].Replace(".png","")}");
-                }
+                m_tiles[special_cave[i]] = Content.Load<Texture2D>(special_cave[i]);    
             }
-            */
 
 
 
+            map1.tiles = m_tiles;
 
             for (int i = 0; i < 15; i++)
             {
@@ -909,12 +1168,27 @@ namespace SurvivorMonogame
 
                 enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, red));
             }
-            
-            
+            List<string> names = new List<string> { "play", "quit", "shop" };
+            foreach (string i in names)
+            {
+                buttonTexs[$"sel_{i}"] = Content.Load<Texture2D>($"sel_{i}");
+                buttonTexs[$"nsel_{i}"] = Content.Load<Texture2D>($"nsel_{i}");
 
 
-            startButton = new Button(new Rectangle(100,100,100,50), "Start", startRect, Color.DarkGray, Color.DarkGoldenrod);
-            buttons.Add(startButton);
+            }
+
+
+
+            Button playButton = new Button(new Rectangle(800,400,200,100), "Play", buttonTexs["sel_play"], buttonTexs["nsel_play"], Color.DarkGray, Color.DarkGoldenrod);
+
+            Button shopButton = new Button(new Rectangle(800, 550, 200, 100), "Shop", buttonTexs["sel_shop"], buttonTexs["nsel_shop"], Color.DarkGray, Color.DarkGoldenrod);
+
+            Button quitButton = new Button(new Rectangle(800, 700, 200, 100), "Quit", buttonTexs["sel_quit"], buttonTexs["nsel_quit"], Color.DarkGray, Color.DarkGoldenrod);
+
+
+            buttons.Add(playButton);
+            buttons.Add(shopButton);
+            buttons.Add(quitButton);
 
 
             base.Initialize();
@@ -923,11 +1197,16 @@ namespace SurvivorMonogame
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            main_background = Content.Load<Texture2D>("CaveBackground");
+            main_background = Content.Load<Texture2D>("CaveBasic");
+            game_text = Content.Load<Texture2D>("TheDepths");
             terrain = Content.Load<Texture2D>("terrain");
             map1.terrain = terrain;
-        }
+            
+            
 
+
+        }
+        public double y_glide = 0;
         protected override void Update(GameTime gameTime)
         {
             Inputs.Update();
@@ -938,15 +1217,33 @@ namespace SurvivorMonogame
             {
                 for (int i = 0; i < buttons.Count; i++)
                 {
-                    if (Inputs.Hovering(buttons[i].rect) && Inputs.LeftClicked)
+                    if (Inputs.Hovering(buttons[i].rect))
                     {
-                        string txt = buttons[i].text;
-                        if (txt == "Start")
+                        buttons[i].mode = "sel";
+                        if (Inputs.LeftClicked)
                         {
-                            screen = "game";
+                            string txt = buttons[i].text;
+                            if (txt == "Play")
+                            {
+                                screen = "game";
+                            }
                         }
                     }
+                    else
+                    {
+                        buttons[i].mode = "nsel";
+                    }
                 }
+                if (isFadingIn)
+                {
+                    alpha += fadeSpeed;
+                    if (alpha >= 1f)
+                    {
+                        alpha = 1f;
+                        isFadingIn = false; // Stop fading in once fully visible
+                    }
+                }
+                y_glide += 0.2;
             }
 
             if (screen == "game")
@@ -1013,6 +1310,7 @@ namespace SurvivorMonogame
             {
                 GraphicsDevice.Clear(Color.CornflowerBlue);
                 _spriteBatch.Draw(main_background, new Rectangle(0, 0, W, H), Color.White);
+                _spriteBatch.Draw(game_text, new Rectangle(W / 2 - game_text.Width, H/2-game_text.Height*4-Math.Min(Convert.ToInt32(y_glide),30), game_text.Width*2, game_text.Height*2), Color.White * alpha);
                 for (int i = 0; i < buttons.Count; i++)
                 {
                     buttons[i].Draw(_spriteBatch);
@@ -1028,7 +1326,7 @@ namespace SurvivorMonogame
 
                 for (int i = 0; i < enemies.Count; i++)
                 {
-                    enemies[i].Draw(_spriteBatch, player.cx, player.cy);
+                    //enemies[i].Draw(_spriteBatch, player.cx, player.cy);
                 }
             
             }
