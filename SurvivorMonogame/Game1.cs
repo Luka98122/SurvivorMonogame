@@ -12,7 +12,10 @@ using SharpDX.DXGI;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-    
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
@@ -168,12 +171,13 @@ namespace SurvivorMonogame
     public class Map
     {
         public Dictionary<int, Texture2D> bindings = new Dictionary<int, Texture2D>{};
-        public List<List<int>> map = new List<List<int>> { };
+        public List<List<double>> map = new List<List<double>> { };
         public int w;
         public int h;
         //public int size = 30;
         public int sw = 49;
         public int sh = 99;
+        
         public Texture2D terrain;
         public int tsize = 141;
         public Dictionary<string, Texture2D> tiles;
@@ -241,7 +245,7 @@ namespace SurvivorMonogame
 
         public string whichTile(int x, int y)
         {
-            if (true == false)
+            if (true == true)
             {
                 TilePattern ttile = new TilePattern(new List<List<int>> {
                 new List<int> {},
@@ -276,6 +280,7 @@ namespace SurvivorMonogame
                         return tp.id;
                     }
                 }
+                return "black";
             }
             else
             {
@@ -328,7 +333,7 @@ namespace SurvivorMonogame
                     return "1,-1";
                 }
 
-                return "solo";
+                return "solo"; 
                 return "Error: Tile-picking logic did not pick any tile. Function: Map.whichTile";
             }
         }
@@ -344,7 +349,7 @@ namespace SurvivorMonogame
             {
                 for (int i = 0; i < w; i++)
                 {
-                    map.Add(new List<int> { });
+                    map.Add(new List<double> { });
                     for (int j = 0; j < h; j++)
                     {
                         if (RNG.Next(0, 15) == 0){
@@ -361,7 +366,7 @@ namespace SurvivorMonogame
 
             for (int i = 0; i < w; i++)
             {
-                map.Add(new List<int> { });
+                map.Add(new List<double> { });
                 for (int j = 0; j < h; j++)
                 {
                     map[i].Add(0);
@@ -570,6 +575,7 @@ namespace SurvivorMonogame
         public string currentAnimation = "idle";
         public int currentFrame = 0;
         public int pickaxeDmg = 1;
+        
         public Texture2D spriteSheet;
         public Texture2D invSpriteSheet;
 
@@ -636,6 +642,25 @@ namespace SurvivorMonogame
 
             bool flag = false;
 
+            bool s = Inputs.importantKeys["s"];
+            bool w = Inputs.importantKeys["w"];
+            bool d = Inputs.importantKeys["d"];
+            bool a = Inputs.importantKeys["a"];
+
+
+            for (int i = y_tile-Convert.ToInt32(w); i < y_tile + 2+Convert.ToInt32(s); i++)
+            {
+                if (i < 0 | i > m.h)
+                    continue;
+                for (int j = x_tile - Convert.ToInt32(a); j < x_tile + 1+Convert.ToInt32(d); j++)
+                {
+
+                    if (j < 0 | j > m.w)
+                        continue;
+                    m.map[i][j] = Math.Max(m.map[i][j]-pickaxeDmg,0);
+                }
+            }
+
             if (Inputs.importantKeys["w"])
             {
                 flag = true;
@@ -650,6 +675,9 @@ namespace SurvivorMonogame
                 flag = true;
                 lastFrameMoving = 0;
             }
+            
+
+
             if (ny != y)
             {
                 for (int i = y_tile - 1; i < y_tile + 2; i++)
@@ -661,7 +689,6 @@ namespace SurvivorMonogame
                         
                         if (j < 0 | j > m.w)
                             continue;
-                        // m.map[i][j] -= 3;
                         Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
                         if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(ox, ny, size, size)))
                         {
@@ -838,6 +865,12 @@ namespace SurvivorMonogame
         public Texture2D game_text;
         public Texture2D terrain;
 
+        public SpriteFont basicFont;
+
+        Dictionary<string, int> shopUpgrades;
+
+        public Dictionary<string, Texture2D> Tex = new Dictionary<string, Texture2D>{};
+
         public int W = 1920;
         public int H = 1080;
 
@@ -846,6 +879,92 @@ namespace SurvivorMonogame
         float fadeSpeed;
         bool isFadingIn;
 
+        private static Random random = new Random();
+        private static double roughness = 1.0; // Set your desired roughness value
+
+        public static List<List<double>> GenerateMap(List<List<double>> m1, int x1, int y1, int x2, int y2, int depth = 0)
+        {
+            if (depth > 12)
+            {
+                return m1;
+            }
+
+            int yd = Math.Abs(y1 - y2);
+            if (yd == 0)
+            {
+                return m1;
+            }
+
+            // Left diff
+            double yh1 = m1[y2][x1] - m1[y1][x1];
+            double ypt1 = yh1 / yd;
+
+            // Right diff
+            double yh2 = m1[y2][x2] - m1[y1][x2];
+            double ypt2 = yh2 / yd;
+
+            int xd = Math.Abs(x1 - x2);
+            if (xd == 0)
+            {
+                return m1;
+            }
+
+            // Top diff
+            double xh1 = m1[y1][x2] - m1[y1][x1];
+            double xpt1 = xh1 / xd;
+
+            // Bottom diff
+            double xh2 = m1[y2][x2] - m1[y2][x1];
+            double xpt2 = xh2 / xd;
+
+            for (int y = y1 + 1; y < y2; y++)
+            {
+                m1[y][x1] = m1[y - 1][x1] + ypt1;
+                m1[y][x2] = m1[y - 1][x2] + ypt2;
+            }
+
+            for (int x = x1 + 1; x < x2; x++)
+            {
+                m1[y1][x] = m1[y1][x - 1] + xpt1;
+                m1[y2][x] = m1[y2][x - 1] + xpt2;
+            }
+
+            // Horizontal fill
+            for (int y = y1 + 1; y < y2; y++)
+            {
+                double t_x_dif = m1[y][x2] - m1[y][x1];
+                double t_x_pt = t_x_dif / xd;
+                for (int x = x1 + 1; x < x2; x++)
+                {
+                    m1[y][x] = m1[y][x - 1] + t_x_pt;
+                }
+            }
+
+            for (int x = x1 + 1; x < x2; x++)
+            {
+                double t_y_dif = m1[y2][x] - m1[y1][x];
+                double t_y_pt = t_y_dif / yd;
+                for (int y = y1 + 1; y < y2; y++)
+                {
+                    m1[y][x] += m1[y - 1][x] + t_y_pt;
+                    m1[y][x] /= 2;
+                }
+            }
+
+            int ym = (y1 + y2) / 2;
+            int xm = (x1 + x2) / 2;
+
+            double offset = (random.NextDouble() - 0.5) * roughness;
+
+            m1[ym][xm] += offset;
+            m1 = GenerateMap(m1, x1, y1, xm, ym, depth + 1);
+            m1 = GenerateMap(m1, xm, y1, x2, ym, depth + 1);
+            m1 = GenerateMap(m1, x1, ym, xm, y2, depth + 1);
+            m1 = GenerateMap(m1, xm, ym, x2, y2, depth + 1);
+            m1[ym][xm] -= offset;
+
+            return m1;
+        }
 
         public SurvivorMonogame()
         {
@@ -872,6 +991,8 @@ namespace SurvivorMonogame
             }
             return bestIndex;
         }
+
+
 
         public Vector2 FindSpawn(Map m1)
         {
@@ -1091,6 +1212,53 @@ namespace SurvivorMonogame
         }
 
         public Dictionary<string, Texture2D> buttonTexs = new Dictionary<string, Texture2D> { };
+
+        public void InitData()
+        {
+            List<string> files = new List<string>() { "shop.json", "achievements.json", "inventory.json" };
+
+            bool flag = false;
+
+            if (File.Exists("data\\shop.json"))
+            {
+                string jsonDat = File.ReadAllText("data\\shop.json");
+                if (jsonDat.Length <= 3)
+                {
+                    flag = true;
+
+                }
+                else
+                {
+                    Dictionary<string, int> upgrades = JsonSerializer.Deserialize<Dictionary<string, int>>(jsonDat);
+                    player.pickaxeDmg = upgrades["mine_speed"];
+                    player.baseSpeed = upgrades["speed"];
+                    player.weapons[0].damage *= Convert.ToInt32(1 + upgrades["damage"] / 10);
+                    player.weapons[0].cooldown -= upgrades["reload_speed"];
+                    shopUpgrades = upgrades;
+                }
+                }
+            else
+            {
+                flag = true;
+            }
+            if (flag)
+            {
+                Dictionary<string, int> upgrades = new Dictionary<string, int>(){
+                    { "speed",2},
+                    { "defense",0},
+                    { "mine_speed",1},
+                    { "reload_speed",0},
+                    { "damage",1}
+                };
+                shopUpgrades = upgrades;
+                File.WriteAllText("data\\shop.json", JsonSerializer.Serialize(upgrades));
+            }
+            
+
+        }
+
+        public double cutoff;
+
         protected override void Initialize()
         {
             Inputs.init();
@@ -1111,6 +1279,43 @@ namespace SurvivorMonogame
             playerRect.SetData(new Color[] { Color.ForestGreen });
 
             map1 = new Map(100, 100);
+            List<List<double>> m12 = new List<List<double>> { };
+            for (int i = 0; i < map1.h; i++)
+            {
+                List<double> row = new List<double> { };
+                
+                for (int j = 0; j < map1.w; j++)
+                {
+                    row.Add(0);
+                }
+                m12.Add(row);
+            }
+            m12[0][0] = random.Next(5, 25);
+            m12[99][0] = random.Next(5, 25);
+            m12[0][99] = random.Next(5, 25);
+            m12[99][99] = random.Next(5, 25);
+
+            m12[0][0] = 15;
+            m12[99][0] = 16;
+            m12[0][99] = 14;
+            m12[99][99] = 17;
+
+            cutoff = (m12[0][0] + m12[0][99] + m12[99][0] + m12[99][99]) / 4;
+
+            map1.map = GenerateMap(m12, 0, 0, 99, 99);
+            for (int i = 0; i < map1.h; i++)
+            {
+
+                for (int j = 0; j < map1.w; j++)
+                {
+                    if (map1.map[i][j] < cutoff)
+                    {
+                        map1.map[i][j] = 0;
+                    }
+                }
+                
+            }
+            Console.WriteLine("Done");
             List<TilePattern> tilePatterns = loadPatterns();
             map1.patterns = tilePatterns;
             map1.bindings[0] = grass;
@@ -1119,14 +1324,12 @@ namespace SurvivorMonogame
             Dictionary<String, List<Rectangle>> pSprites = LoadSpriteSheet();
             Dictionary<String, List<Rectangle>> InvPSprites = LoadInvertedSpriteSheet();
 
-            
-            
+            List<string> TexNames = new List<string> {"sign","miner"};
 
-
-
-
-
-
+            foreach (string name in TexNames)
+            {
+                Tex[name] = Content.Load<Texture2D>(name);
+            }
 
 
 
@@ -1142,7 +1345,7 @@ namespace SurvivorMonogame
 
             player.spriteSheet = spritesheet;
             player.invSpriteSheet = invspritesheet;
-
+            InitData();
             Dictionary<string, Texture2D> m_tiles = new Dictionary<string, Texture2D> { };
             for (int i = -1; i < 2; i++)
             {
@@ -1201,8 +1404,8 @@ namespace SurvivorMonogame
             game_text = Content.Load<Texture2D>("TheDepths");
             terrain = Content.Load<Texture2D>("terrain");
             map1.terrain = terrain;
-            
-            
+
+            basicFont = Content.Load<SpriteFont>("BasicFont");
 
 
         }
@@ -1226,6 +1429,10 @@ namespace SurvivorMonogame
                             if (txt == "Play")
                             {
                                 screen = "game";
+                            }
+                            if (txt == "Shop")
+                            {
+                                screen = "shop";
                             }
                         }
                     }
@@ -1317,6 +1524,25 @@ namespace SurvivorMonogame
                 }   
             }
 
+            if (screen == "shop")
+            {
+                _spriteBatch.Draw(main_background, new Rectangle(0, 0, W, H), Color.White);
+                _spriteBatch.Draw(Tex["miner"], new Rectangle(20, 400, Convert.ToInt32(Tex["miner"].Width*1.2), Convert.ToInt32(Tex["miner"].Height*1.2)),Color.White);
+                List<string> keyList = new List<string>(shopUpgrades.Keys);
+                for (int j = 0; j < 5; j++)
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        _spriteBatch.Draw(Tex["sign"], new Rectangle(380 + Convert.ToInt32(Tex["sign"].Width*j*1.5), 300 + Tex["sign"].Height * i, Tex["sign"].Width, Tex["sign"].Height), Color.White);
+                        if (j*3+i < shopUpgrades.Count)
+                        {
+
+                            _spriteBatch.DrawString(basicFont, keyList[j*3+i], new Vector2(390 + Convert.ToInt32(Tex["sign"].Width * j * 1.5), 380 + Tex["sign"].Height * i), Color.White);
+                        }
+                    }
+                }
+            }
+
             if (screen == "game")
             {
                 GraphicsDevice.Clear(Color.Beige);
@@ -1326,7 +1552,7 @@ namespace SurvivorMonogame
 
                 for (int i = 0; i < enemies.Count; i++)
                 {
-                    //enemies[i].Draw(_spriteBatch, player.cx, player.cy);
+                    
                 }
             
             }

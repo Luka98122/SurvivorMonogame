@@ -121,6 +121,13 @@
 /processorParam:TextureFormat=Color
 /build:1,1.png
 
+#begin BasicFont.spritefont
+/importer:FontDescriptionImporter
+/processor:LocalizedFontProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:BasicFont.spritefont
+
 #begin black.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -277,6 +284,18 @@
 /processorParam:TextureFormat=Color
 /build:kr6.png
 
+#begin miner.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:miner.png
+
 #begin nsel_play.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -348,6 +367,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:sel_shop.png
+
+#begin sign.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:sign.png
 
 #begin single_horizontal.png
 /importer:TextureImporter

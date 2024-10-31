@@ -29,6 +29,7 @@
     <None Remove="Content\kr4.png" />
     <None Remove="Content\kr5.png" />
     <None Remove="Content\kr6.png" />
+    <None Remove="data\shop.json" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\Animated\FbF\Player\char_0\run\kr1.png">
@@ -67,10 +68,18 @@
     <Content Include="Content\kr6.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="data\shop.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.1.303" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Game1.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />
