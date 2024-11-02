@@ -16,10 +16,18 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
 {
+    
+    public class AssetManager
+    {
+        public Dictionary<string, Texture2D> assets = new Dictionary<string, Texture2D> { };
+
+        
+    }
 
     public class Bullet
     {
@@ -446,6 +454,64 @@ namespace SurvivorMonogame
             }
         }
     }
+    public class EnemyMelee : Enemy
+    {
+        //public int x;
+        //public int y;
+        public Texture2D tex;
+        public EnemyMelee(int x, int y, Texture2D tex) : base(x, y, tex)
+        {
+
+        }
+
+        public void Draw(SpriteBatch _spb, int cx, int cy)
+        {
+
+        }
+    }
+
+    public class EnemyMeleeTentacle : EnemyMelee
+    {
+        //public int x;
+        //public int y;
+        public Texture2D tex;
+        public List<Rectangle> spriteRects = new List<Rectangle> { };
+        public Dictionary<string, int> animationTimes = new Dictionary<string, int> { };
+        public Dictionary<string, int> animationFrames = new Dictionary<string, int> { };
+        static public int h = 121;
+        static public int w = 145;
+        public int currentFrame = 0;
+        public EnemyMeleeTentacle(int x1, int y1, Texture2D tex,List<Rectangle> rec) : base(x1, y1,  tex)
+        {
+            animationTimes["move"] = 40;
+            animationFrames["move"] = 5;
+            spriteRects = rec;
+            x = x1;
+            y = y1;
+        }
+
+        public void Update(Map m, int px, int py) 
+        {
+            int a = x;
+            int b = y;
+            base.Update(m, px, py);
+            currentFrame += 1;
+            currentFrame = currentFrame % animationTimes["move"];
+        } 
+
+        public void Draw(SpriteBatch _spb, AssetManager Assets, int cx, int cy)
+        {
+            int img = Convert.ToInt32(Math.Floor((Convert.ToDecimal(currentFrame) / (Convert.ToDecimal(animationTimes[$"move"]) / animationFrames["move"]))));
+            
+            if (img < 0)
+                img = 0;
+            Texture2D spriteSheet = Assets.assets["EnemyMeleeTentacles"];
+            _spb.Draw(spriteSheet, new Vector2(x - cx - 55, y - cy - 95), spriteRects[img], Color.White);
+       
+
+        }
+
+    }
     public class Enemy
     {
         public int x;
@@ -560,6 +626,10 @@ namespace SurvivorMonogame
             _spb.Draw(rectTexture, new Rectangle(x-cx, y-cy, size, size), Color.AliceBlue);
         }
     }
+    
+
+    
+    
     public class Player
     {
         public int x = 400;
@@ -567,7 +637,7 @@ namespace SurvivorMonogame
         public int cx;
         public int cy;
         public int baseSpeed = 2;
-        public int size = 30;
+        public int size = 30; 
         public Texture2D rectTexture;
         public Texture2D bulletTex;
         public List<Weapon> weapons = new List<Weapon> { };
@@ -787,6 +857,8 @@ namespace SurvivorMonogame
 
         public static void Update()
         {
+            LeftClicked = false;
+
             oms = ms;
             ms = Mouse.GetState();
             if (ms.LeftButton != ButtonState.Pressed && oms.LeftButton == ButtonState.Pressed)
@@ -855,16 +927,18 @@ namespace SurvivorMonogame
         public string screen = "main";
         public GraphicsDeviceManager _graphics;
         public SpriteBatch _spriteBatch;
-        private Texture2D startRect;
+        public Texture2D startRect;
         private Button startButton;
         public List<Button> buttons = new List<Button>();
         public Player player;
-        public List<Enemy> enemies = new List<Enemy> { };
+        public List<EnemyMeleeTentacle> enemies = new List<EnemyMeleeTentacle> { };
         public Map map1;
         public Texture2D main_background;
         public Texture2D game_text;
         public Texture2D terrain;
-
+        public EnemyMelee e1;
+        public AssetManager Assets = new AssetManager { };
+        
         public SpriteFont basicFont;
 
         Dictionary<string, int> shopUpgrades;
@@ -991,9 +1065,6 @@ namespace SurvivorMonogame
             }
             return bestIndex;
         }
-
-
-
         public Vector2 FindSpawn(Map m1)
         {
             int x = -1;
@@ -1024,6 +1095,25 @@ namespace SurvivorMonogame
                 for (int x = 0; x < lenghts[y]; x++)
                 {
                     sprites[names[y]].Add(new Rectangle(x * 128, y * 128, 128, 128));
+                }
+            }
+
+            return sprites;
+        }
+
+        public Dictionary<string, List<Rectangle>> LoadCustomSpritesheet(List<String> names, List<int> lenghts, int w, int h,int max)
+        {
+            Dictionary<String, List<Rectangle>> sprites = new Dictionary<string, List<Rectangle>> { };
+
+            for (int i = 0; i < names.Count; i++)
+            {
+                sprites[names[i]] = new List<Rectangle> { };
+            }
+            for (int y = 0; y < names.Count; y++)
+            {
+                for (int x = 0; x < lenghts[y]; x++)
+                {
+                    sprites[names[y]].Add(new Rectangle(Math.Min(x * w,max), y * h, Math.Min(max-x*w,w), h));
                 }
             }
 
@@ -1300,9 +1390,10 @@ namespace SurvivorMonogame
             m12[0][99] = 14;
             m12[99][99] = 17;
 
-            cutoff = (m12[0][0] + m12[0][99] + m12[99][0] + m12[99][99]) / 4;
+            cutoff = (m12[0][0] + m12[0][99] + m12[99][0] + m12[99][99]) / 4-0.6;
 
             map1.map = GenerateMap(m12, 0, 0, 99, 99);
+            
             for (int i = 0; i < map1.h; i++)
             {
 
@@ -1364,12 +1455,13 @@ namespace SurvivorMonogame
 
 
             map1.tiles = m_tiles;
-
+            Dictionary<string,List<Rectangle>> TentacleRects = LoadCustomSpritesheet(new List<String> { "move" }, new List<int> { 5 }, EnemyMeleeTentacle.w, EnemyMeleeTentacle.h,691);
             for (int i = 0; i < 15; i++)
             {
                 Vector2 enemyPos = FindSpawn(map1);
 
-                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, red));
+                enemies.Add(new EnemyMeleeTentacle(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, red, TentacleRects["move"]));
+                
             }
             List<string> names = new List<string> { "play", "quit", "shop" };
             foreach (string i in names)
@@ -1407,6 +1499,13 @@ namespace SurvivorMonogame
 
             basicFont = Content.Load<SpriteFont>("BasicFont");
 
+            Texture2D tent = Content.Load<Texture2D>("EnemyMeleeTentacles");
+            Assets.assets.Add("EnemyMeleeTentacles", tent);
+
+            Dictionary<string, List<Rectangle>> tentacle_tex = LoadCustomSpritesheet(new List<string> { "move" }, new List<int> { 5 }, EnemyMeleeTentacle.w, EnemyMeleeTentacle.h,691);
+                  
+
+
 
         }
         public double y_glide = 0;
@@ -1414,7 +1513,14 @@ namespace SurvivorMonogame
         {
             Inputs.Update();
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
+                if (screen != "main")
+                {
+                    screen = "main";
+                }
+                else
+                {
+                    Exit();
+                }
 
             if (screen == "main")
             {
@@ -1478,8 +1584,8 @@ namespace SurvivorMonogame
                             {
                                 Vector2 enemyPos = FindSpawn(map1);
 
-                                enemies.Add(new Enemy(Convert.ToInt32(enemyPos.X) * map1.sw, Convert.ToInt32(enemyPos.Y) * map1.sh, enemies[j].rectTexture));
-                                enemies.RemoveAt(j);
+                                enemies.Add(new EnemyMeleeTentacle(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, enemies[j].rectTexture, enemies[j].spriteRects));
+                enemies.RemoveAt(j);
 
                             }
                         }
@@ -1552,7 +1658,7 @@ namespace SurvivorMonogame
 
                 for (int i = 0; i < enemies.Count; i++)
                 {
-                    
+                    enemies[i].Draw(_spriteBatch,Assets, player.cx, player.cy);
                 }
             
             }

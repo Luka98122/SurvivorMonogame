@@ -164,6 +164,18 @@
 /processorParam:TextureFormat=Color
 /build:CaveBasic.png
 
+#begin EnemyMeleeTentacles.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:EnemyMeleeTentacles.png
+
 #begin horizontal_end_left.png
 /importer:TextureImporter
 /processor:TextureProcessor
