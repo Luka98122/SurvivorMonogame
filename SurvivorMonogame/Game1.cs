@@ -15,13 +15,106 @@ using System.Security.Cryptography.X509Certificates;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.ComponentModel.Design.Serialization;
 
 
 //using SharpDX.Direct2D1;
 
 namespace SurvivorMonogame
 {
-    
+    public class AstarNode
+    {
+        public Vector2 pos;
+        public AstarNode parent;
+        public float h = float.PositiveInfinity;
+        public float g = float.PositiveInfinity;
+        public float f {get {return h+g; } }
+
+        public AstarNode(Vector2 pos2)
+        {
+            pos = pos2;
+            parent = null;
+        }
+
+        public List<AstarNode> AstarPFind(AstarNode end)
+        {
+            List<AstarNode> path = new List<AstarNode> { };
+
+            List<AstarNode> open_list = new List<AstarNode> { };
+            List<AstarNode> closed_list = new List<AstarNode> { };
+
+            while (open_list.Count > 0)
+            {
+                AstarNode currentNode = open_list[0]; // Get best node
+                for (int i = 0; i < open_list.Count; i++)
+                {
+                    if (open_list[i].f < currentNode.f)
+                    {
+                        currentNode = open_list[i];
+                    }
+                }
+                closed_list.Add(currentNode);
+                if (currentNode.Equals(end)) // check if its the final node 
+                {
+                    path = new List<AstarNode>{ };
+                    while (currentNode!=null)
+                    {
+                        path.Add(currentNode);
+                        currentNode = currentNode.parent;
+                    }
+                }
+
+                List<List<int>> directions = new List<List<int>> { new List<int> { 0, -1 }, new List<int> { 1, 0 }, new List<int> { 0, 1 }, new List<int> { -1, 0 } };
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2 new_pos = new Vector2(currentNode.pos.X + directions[i][0], currentNode.pos.Y + directions[i][1]);
+
+                    AstarNode neighborNode = new AstarNode(new_pos);
+                    neighborNode.parent = currentNode;
+                    bool flg = false;
+
+                    for (int j = 0; j < closed_list.Count; j++)
+                    {
+                        if (neighborNode.Equals(closed_list[j]))
+                        {
+                            flg = true;
+                            break;
+                        }
+                    }
+                    if (flg)
+                        continue;
+                    neighborNode.g = currentNode.g+1;
+                    neighborNode.h = Math.Abs(end.pos.X - neighborNode.pos.X) + Math.Abs(end.pos.Y - neighborNode.pos.Y);
+                    flg = false;
+                    for (int j = 0; j < open_list.Count; j++)
+                    {
+                        if (neighborNode.Equals(open_list[j]) && open_list[j].g < neighborNode.g)
+                        {
+                            flg = true;
+                            break;
+                        }
+                    }
+                    if (flg)
+                        continue;
+                    open_list.Add(neighborNode);
+                    
+                }
+            }
+
+            return path;
+        }
+
+        public bool Equals(AstarNode obj)
+        {
+            if (pos.Equals(obj.pos))
+            {
+                return true;
+            }
+            return false;
+        }
+    }
+
+
     public class AssetManager
     {
         public Dictionary<string, Texture2D> assets = new Dictionary<string, Texture2D> { };
@@ -665,7 +758,7 @@ namespace SurvivorMonogame
         public Player(Texture2D recTex, Texture2D bulletTex, Dictionary<String,List<Rectangle>> rects, Dictionary<String, List<Rectangle>> INVrects)
         {
             rectTexture = recTex;
-            weapons.Add(new Weapon(25, 12000, bulletTex));
+            weapons.Add(new Weapon(25, 12, bulletTex));
             animationTimes["char_0!death"] = 150;
             animationTimes["char_0!sword_idle"] = 45;
             animationTimes["char_0!run"] = 30;
@@ -676,6 +769,8 @@ namespace SurvivorMonogame
             invSpriteRects = INVrects;
             
         }
+
+        
 
         public void Update(Map m, int ex, int ey)
         {
@@ -954,8 +1049,7 @@ namespace SurvivorMonogame
         bool isFadingIn;
 
         private static Random random = new Random();
-        private static double roughness = 1.0; // Set your desired roughness value
-
+        private static double roughness = 0.3;
         public static List<List<double>> GenerateMap(List<List<double>> m1, int x1, int y1, int x2, int y2, int depth = 0)
         {
             if (depth > 12)
@@ -1117,7 +1211,7 @@ namespace SurvivorMonogame
                 }
             }
 
-            return sprites;
+             return sprites;
         }
 
         public Dictionary<string, List<Rectangle>> LoadInvertedSpriteSheet()
