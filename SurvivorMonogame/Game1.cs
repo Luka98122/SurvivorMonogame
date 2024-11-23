@@ -16,7 +16,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.ComponentModel.Design.Serialization;
-
+using System;
+using System.Diagnostics;
 
 //using SharpDX.Direct2D1;
 
@@ -46,7 +47,7 @@ namespace SurvivorMonogame
             List<AstarNode> path = new List<AstarNode>();
             List<AstarNode> open_list = new List<AstarNode> { this };
             HashSet<AstarNode> closed_list = new HashSet<AstarNode>();
-
+            
             while (open_list.Count > 0)
             {
                 AstarNode currentNode = open_list.OrderBy(n => n.f).First();
@@ -393,7 +394,7 @@ namespace SurvivorMonogame
                         return tp.id;
                     }
                 }
-                return "black";
+                return "solo";
             }
             else
             {
@@ -554,12 +555,20 @@ namespace SurvivorMonogame
                             _spb.Draw(tiles[tile], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
                             
                         }
-                        _spb.Draw(_whiteSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30),Color.Aqua);
+                        //_spb.Draw(_whiteSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30),Color.Aqua);
                     }
                     else
                     {
-                        _spb.Draw(_blackSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30), Color.Aqua);
+                        //_spb.Draw(_blackSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30), Color.Aqua);
                         
+                    }
+                    if (map[i][j] < 0)
+                    {
+                        //_spb.Draw(_whiteSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30), Color.Red);
+                    }
+                    if (map[i][j] == 0)
+                    {
+                        //_spb.Draw(_whiteSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30), Color.Aqua);
                     }
                 }
             }
@@ -631,12 +640,13 @@ namespace SurvivorMonogame
         public int size = 30;
         public int health = 100;
         public Texture2D rectTexture;
-
+        public Stopwatch stop;
         public Enemy(int x, int y,Texture2D tex)
         {
             this.rectTexture = tex;
             this.x = x;
-            this.y = y; 
+            this.y = y;
+            stop = new Stopwatch();
         }
 
         public bool AreRectanglesTouching(Rectangle r1, Rectangle r2)
@@ -660,7 +670,7 @@ namespace SurvivorMonogame
             int x_tile = x / m.sw;
 
 
-            int ny = y;
+            int ny = y; 
             int nx = x;
             int oy = y;
             int ox = x;
@@ -669,8 +679,14 @@ namespace SurvivorMonogame
             start.g = 0;
             AstarNode end = new AstarNode(new Vector2(px/m.sw, py/m.sh));
             start.h = Math.Abs(end.pos.X - start.pos.X) + Math.Abs(end.pos.Y - start.pos.Y);
-            List<AstarNode> path = start.AstarPFind(end,m);
-
+            stop.Start();
+            List < AstarNode> path = start.AstarPFind(end,m);
+            stop.Stop();
+            if (stop.ElapsedMilliseconds >= 100)
+            {
+                int a = 5;
+                List<AstarNode> path2 = start.AstarPFind(end, m);
+            }
             if (path.Count > 1)
             {
                 float xa, ya ;
@@ -786,6 +802,7 @@ namespace SurvivorMonogame
         public int cy;
         public int baseSpeed = 2;
         public int size = 30;
+        public int sh = 60;
         public int scale = 2;
         public Texture2D rectTexture;
         public Texture2D bulletTex;
@@ -814,7 +831,7 @@ namespace SurvivorMonogame
         public Player(Texture2D recTex, Texture2D bulletTex, Dictionary<String,List<Rectangle>> rects, Dictionary<String, List<Rectangle>> INVrects,int screenWidth=0)
         {
             rectTexture = recTex;
-            weapons.Add(new Weapon(25, 1200, bulletTex));
+            weapons.Add(new Weapon(25, 45, bulletTex));
             animationTimes["char_0!death"] = 150;
             animationTimes["char_0!sword_idle"] = 45;
             animationTimes["char_0!run"] = 30;
@@ -885,19 +902,28 @@ namespace SurvivorMonogame
 
             if (Inputs.importantKeys["w"])
             {
-                flag = true;
-                ny -= baseSpeed;
-                ncy -= baseSpeed;
-                lastFrameMoving = 0;
-               // m.map[y_tile-1][x_tile] = Math.Max(m.map[y_tile-1][x_tile] - pickaxeDmg, 0);
+                ny -= (int)(baseSpeed*1.5);
+                if (ny > 200)
+                {
+                    flag = true;
+                    ncy -= (int)(baseSpeed * 1.5);
+                    lastFrameMoving = 0;
+                    m.map[y_tile - 1][x_tile] = Math.Max(m.map[y_tile - 1][x_tile] - pickaxeDmg, 0);
+                    if (m.map[y_tile - 1][x_tile] < 1) m.map[y_tile - 1][x_tile] = 0;
+                }
             }
             if (Inputs.importantKeys["s"])
             {
-                ny += baseSpeed;
-                ncy += baseSpeed;
-                flag = true;
-                lastFrameMoving = 0;
-                //m.map[y_tile + 1][x_tile] = Math.Max(m.map[y_tile+1][x_tile] - pickaxeDmg, 0);
+                 ny += (int)(baseSpeed*1.3);
+                if (ny < m.h * m.sh - 200)
+                {
+                    ncy += (int)(baseSpeed * 1.3);
+
+                    flag = true;
+                    lastFrameMoving = 0;
+                    m.map[y_tile + 1][x_tile] = Math.Max(m.map[y_tile + 1][x_tile] - pickaxeDmg, 0);
+                    if (m.map[y_tile + 1][x_tile] < 1) m.map[y_tile + 1][x_tile] = 0;
+                }
             }
             
 
@@ -914,7 +940,7 @@ namespace SurvivorMonogame
                         if (j < 0 | j > m.w)
                             continue;
                         Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
-                        if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(ox, ny, size, size)))
+                        if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(ox, ny, size, sh)))
                         {
                             flag = false;
                         }
@@ -926,24 +952,33 @@ namespace SurvivorMonogame
                 y = ny;
                 cy = ncy;
             }
-            flag = true;
+            flag = false;
             if (Inputs.importantKeys["a"])
             {
-                flag = true;
+                
                 nx -= baseSpeed;
-                ncx -= baseSpeed;
-                lastFrameMoving = 0;
-                facing = "l";
-                //m.map[y_tile][x_tile -1] = Math.Max(m.map[y_tile][x_tile -1] - pickaxeDmg, 0);
+                if (nx > 200)
+                {
+                    flag = true;
+                    ncx -= baseSpeed;
+                    lastFrameMoving = 0;
+                    facing = "l";
+                    m.map[y_tile][x_tile - 1] = Math.Max(m.map[y_tile][x_tile - 1] - pickaxeDmg, 0);
+                    if (m.map[y_tile][x_tile - 1] < 1) m.map[y_tile][x_tile - 1] = 0;
+                }
             }
             if (Inputs.importantKeys["d"])
             {
-                flag = true;
                 nx += baseSpeed;
-                ncx += baseSpeed;
-                lastFrameMoving = 0;
-                facing = "r";
-                //m.map[y_tile][x_tile+1] = Math.Max(m.map[y_tile][x_tile+1] - pickaxeDmg, 0);
+                if (nx < m.sw * m.w - 200)
+                {
+                    ncx += baseSpeed;
+                    flag = true;
+                    lastFrameMoving = 0;
+                    facing = "r";
+                    m.map[y_tile][x_tile + 1] = Math.Max(m.map[y_tile][x_tile + 1] - pickaxeDmg, 0);
+                    if (m.map[y_tile][x_tile + 1] < 1) m.map[y_tile][x_tile + 1] = 0;
+                }
             }
             
             if (nx != x)
@@ -957,7 +992,7 @@ namespace SurvivorMonogame
                         if (j < 0 | j > m.w)
                             continue;
                         Rectangle tempRect = new Rectangle(j * m.sw, i * m.sh, m.sw, m.sh);
-                        if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(nx,oy,size,size)))
+                        if (m.map[i][j] >= 1 && tempRect.Intersects(new Rectangle(nx,oy,size,sh)))
                         {
                             flag = false;
                         }
@@ -978,7 +1013,7 @@ namespace SurvivorMonogame
                 weapons[i].Draw(_spb, cx, cy);
             }
             // Debug draw
-            _spb.Draw(rectTexture, new Rectangle(x - cx, y - cy, size, size), Color.Red);
+            //_spb.Draw(rectTexture, new Rectangle(x - cx, y - cy, size, size), Color.Red);
             int img = Convert.ToInt32((Convert.ToDecimal(currentFrame) / Convert.ToDecimal(animationTimes[$"char_0!{currentAnimation}"])) * spriteRects[currentAnimation].Count -1);
             if (img < 0)
                 img = 0;
@@ -1453,6 +1488,15 @@ namespace SurvivorMonogame
             tp = new TilePattern(p, "horizontal_end_left");
             patterns.Add(tp);
 
+            p = new List<List<int>>()
+            {
+                new List<int>{2,1,2},
+                new List<int>{1,1,1},
+                new List<int>{2,1,2}
+
+            };
+            tp = new TilePattern(p, "black");
+            patterns.Add(tp);
 
             return patterns;
         }
@@ -1681,6 +1725,7 @@ namespace SurvivorMonogame
 
         }
         public double y_glide = 0;
+        public int cdLeft = 10;
         protected override void Update(GameTime gameTime)
         {
             Inputs.Update();
@@ -1733,6 +1778,18 @@ namespace SurvivorMonogame
 
             if (screen == "game")
             {
+                cdLeft -= 1;
+                if (cdLeft <= 0)
+                {
+                    cdLeft = 10;
+                    for (int i = 0; i < map1.h; i++)
+                    {
+                        for (int j = 0; j < map1.w; j++)
+                        {
+                            map1.map[i][j] = Math.Max(map1.map[i][j], 0);
+                        }
+                    }
+                }
                 int enemyToTarget = findNearestEnemy(player.x, player.y);
                 player.Update(map1, enemies[enemyToTarget].x, enemies[enemyToTarget].y);
                 for (int i = 0; i < enemies.Count; i++)
@@ -1773,7 +1830,7 @@ namespace SurvivorMonogame
                              
                             if (map1.map[my][mx] > 0)
                             {
-                                map1.map[my][mx] -= weapon.bullets[i].dmg;
+                                //map1.map[my][mx] -= weapon.bullets[i].dmg;
                                 weapon.bullets.RemoveAt(i);
                                 i--;
                                 rmved += 1; 
