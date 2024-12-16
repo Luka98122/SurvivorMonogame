@@ -140,6 +140,18 @@
 /processorParam:TextureFormat=Color
 /build:black.png
 
+#begin bullet pixel art.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:bullet pixel art.png
+
 #begin CaveBackground.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -344,6 +356,18 @@
 /processorParam:TextureFormat=Color
 /build:nsel_shop.png
 
+#begin pfpedited.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:pfpedited.png
+
 #begin sel_play.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -475,4 +499,16 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:vertical_end_up.png
+
+#begin weaponslots.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:weaponslots.png
 

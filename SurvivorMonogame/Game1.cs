@@ -23,283 +23,205 @@ using System.Diagnostics;
 
 namespace SurvivorMonogame
 {
+    using SharpDX.Direct3D9;
     using System;
     using System.Collections.Generic;
+    using System.Configuration;
     using System.Linq;
+    using System.Linq.Expressions;
     using System.Numerics;
+    using System.Security.Permissions;
 
-    public class AstarNode
+    public class Particle
     {
         public Vector2 pos;
-        public AstarNode parent;
-        public float h = float.PositiveInfinity;
-        public float g = 0;
-        public float f { get { return h + g; } }
+        public float dx;
+        public float dy;
+        public int size;
+        public Color color;
+        public float lifetime; 
+        public float age; 
 
-        public AstarNode(Vector2 pos2)
+        public Particle(Vector2 pos1, Color color1)
         {
-            pos = pos2;
-            parent = null;
+            pos = pos1;
+            color = color1;
+            size = 3;
+            lifetime = 1.0f; 
+            age = 0.0f; 
+            dx = 0; 
+            dy = 0; 
         }
 
-        public List<AstarNode> AstarPFind(AstarNode end, Map m)
+        public void Update(float deltaTime)
         {
-            List<AstarNode> path = new List<AstarNode>();
-            List<AstarNode> open_list = new List<AstarNode> { this };
-            HashSet<AstarNode> closed_list = new HashSet<AstarNode>();
-            
-            while (open_list.Count > 0)
+            age += deltaTime;
+            pos.X += dx * deltaTime;
+            pos.Y += dy * deltaTime+0.2f;
+        }
+
+        public bool IsAlive()
+        {
+            return age < lifetime;
+        }
+
+        public void Draw(SpriteBatch _spb, Texture2D white, int cx, int cy)
+        {
+            if (IsAlive())
             {
-                AstarNode currentNode = open_list.OrderBy(n => n.f).First();
-                open_list.Remove(currentNode);
-                closed_list.Add(currentNode);
-
-                if (currentNode.Equals(end))
-                {
-                    while (currentNode != null)
-                    {
-                        path.Add(currentNode);
-                        currentNode = currentNode.parent;
-                    }
-                    path.Reverse();
-                    return path;
-                }
-
-                List<List<int>> directions = new List<List<int>>
-            {
-                new List<int> { 0, -1 },
-                new List<int> { 1, 0 },
-                new List<int> { 0, 1 },
-                new List<int> { -1, 0 },
-                new List<int> {-1,-1},
-                new List<int> {1,-1},
-                new List<int> {1,1},
-                new List<int> {-1,1}
-            };
-
-                foreach (var direction in directions)
-                {
-                    Vector2 new_pos = new Vector2(currentNode.pos.X + direction[0], currentNode.pos.Y + direction[1]);
-
-                    if (new_pos.X < 0 || new_pos.X >= m.map[0].Count || new_pos.Y < 0 || new_pos.Y >= m.map.Count)
-                        continue;
-
-                    if (m.map[(int)new_pos.Y][(int)new_pos.X] != 0)
-                        continue;
-
-                    AstarNode neighborNode = new AstarNode(new_pos);
-                    if (closed_list.Contains(neighborNode))
-                        continue;
-
-                    neighborNode.parent = currentNode;
-                    neighborNode.g = currentNode.g + 1;
-                    neighborNode.h = Math.Abs(end.pos.X - neighborNode.pos.X) + Math.Abs(end.pos.Y - neighborNode.pos.Y);
-
-                    AstarNode existingNode = open_list.FirstOrDefault(n => n.Equals(neighborNode));
-                    if (existingNode != null)
-                    {
-                        if (neighborNode.g >= existingNode.g)
-                            continue;
-
-                        open_list.Remove(existingNode);
-                    }
-                    open_list.Add(neighborNode);
-                }
+                _spb.Draw(white, new Vector2(pos.X-cx,pos.Y-cy), null, color, 0f, new Vector2(size / 2, size / 2), new Vector2(size, size), SpriteEffects.None, 0f);
             }
-
-            return path;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is AstarNode other)
-            {
-                return pos.Equals(other.pos);
-            }
-            return false;
-        }
-
-        public override int GetHashCode()
-        {
-            return pos.GetHashCode();
         }
     }
 
-
-    public class AssetManager
+    public class ParticleEmitter
     {
-        public Dictionary<string, Texture2D> assets = new Dictionary<string, Texture2D> { };
-
-        
-    }
-
-    public class Bullet
-    {
-        public int x;
-        public int y;
-        public double dx;
-        public double dy;
-        public int size = 10;
-        public int dmg = 25;
-        public int speed = 3;
-        public int timeAlive = 0;
-        
-        Texture2D tex;
-        public Bullet(int x, int y, double xd, double yd, Texture2D te, int size=10, int dmg = 25)
+        private List<Particle> particles;
+        private Random random;
+        private Vector2 position;
+        private Color color;
+        private int maxParticles;
+        private float spawnRate; 
+        private float timeSinceLastSpawn;
+        public Texture2D white;
+        public float lifetime;
+        public int size;
+        public ParticleEmitter(Vector2 position, Color color, int maxParticles, float spawnRate, Texture2D white2)
         {
-            
-
-            this.x = x;
-            this.y = y;
-            dx = xd;
-            dy = yd;
-            this.size = size;
-            this.dmg = dmg;
-            this.tex = te;
+            this.position = position;
+            this.color = color;
+            this.maxParticles = maxParticles;
+            this.spawnRate = spawnRate;
+            particles = new List<Particle>();
+            random = new Random();
+            white = white2;
+            size = 100;
         }
-        public void Update()    
+
+        public void Update(float deltaTime)
         {
-            try
-            {
-                x += Convert.ToInt32(dx * speed);
-                y += Convert.ToInt32(dy * speed);
-            } catch
+            timeSinceLastSpawn += deltaTime;
+            lifetime -= deltaTime;
+            if (lifetime <= 0)
             {
                 return;
             }
+
+            while (timeSinceLastSpawn >= 1f / spawnRate && particles.Count < maxParticles)
+            {
+                SpawnParticle();
+                timeSinceLastSpawn -= 1f / spawnRate;
+            }
+
+            for (int i = particles.Count - 1; i >= 0; i--)
+            {
+                if (lifetime <= 0)
+                {
+                    return;
+                }
+                particles[i].Update(deltaTime);
+                if (!particles[i].IsAlive())
+                {
+                    particles.RemoveAt(i);
+                }
+            }
+        }
+
+        private void SpawnParticle()
+        {
+            Particle particle = new Particle(position, color)
+            {
+                dx = (float)((random.NextDouble()-0.5f) * size), 
+                dy = (float)((random.NextDouble()-0.5f) * size), 
+                lifetime = (float)(random.NextDouble()) 
+            };
+            Console.WriteLine("Added particle\n");
+            particles.Add(particle);
+        }
+
+        public void Draw(SpriteBatch _spb, int cx, int cy)
+        {
+            foreach (var particle in particles)
+            {
+                particle.Draw(_spb,white, cx, cy);
+            }
+        }
+    }
+
+    public class ParticleManager
+    {
+        public List<ParticleEmitter> emitters;
+
+        public ParticleManager()
+        {
+            emitters = new List<ParticleEmitter>();
+        }
+
+        public void Update(float deltaTime)
+        {
+            foreach (var emitter in emitters)
+            {
+                emitter.Update(deltaTime);
+            }
+        }
+
+        public void Draw(SpriteBatch _spb, int cx, int cy)
+        {
+            foreach (var emitter in emitters)
+            {
+                if (emitter.lifetime > 0)
+                {
+                    emitter.Draw(_spb, cx, cy);
+                }
+            }
+        }
+
+        public void AddEmitter(ParticleEmitter emitter)
+        {
+            emitters.Add(emitter);
+        }
+    }
+
+    public class HUD
+    {
+        public Texture2D pfp;
+        public Texture2D weaponslots;
+
+        public int W;
+        public int H;
+
+        public HUD()
+        {
             
-            timeAlive++;
-
         }
-        public void Draw(SpriteBatch _spb, int cx, int cy)
+
+        public void Draw(SpriteBatch _spb)
         {
-            _spb.Draw(tex,new Rectangle(x-cx,y-cy,size,size),Color.AliceBlue);
+            Vector2 scale = new Vector2(2.0f, 2.0f); 
+            _spb.Draw(pfp, new Vector2(10, 10), null, Color.White * 1f, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f); 
+            _spb.Draw(weaponslots, new Vector2(10, H - 100), null, Color.White * 1f, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
     }
-    public class Weapon
-    {
-        public int damage;
-        public int cooldown;
-        public int tillnext;
-        public Texture2D bulletTex;
-        public List<Bullet> bullets = new List<Bullet> { };
-
-        public static (double dx, double dy) CalculateDirection((double x, double y) start, (double x, double y) target)
-        {
-            double diffX = target.x - start.x;
-            double diffY = target.y - start.y;
-
-            double len = Math.Sqrt(diffX * diffX + diffY * diffY);
-
-            double dx = diffX / len;
-            double dy = diffY / len;
-
-            return (dx, dy);
-        }
-
-        public Weapon(int dmg, int cd, Texture2D bulTex)
-        {
-            damage = dmg;
-            cooldown = cd;
-            bulletTex = bulTex;
-        }
-        public void Update(int x, int y, int psize, int ex, int ey)
-        {
-            tillnext -= 1;
-
-            var start = (Convert.ToDouble(x), Convert.ToDouble(y));
-            var end = (Convert.ToDouble(ex), Convert.ToDouble(ey));
-
-
-            if (tillnext <= 0)
-            {
-                var dat = CalculateDirection(start, end);
-                if (dat.dx == double.NaN | dat.dy == double.NaN)
-                {
-
-                }
-                else
-                {
-                    bullets.Add(new Bullet(x + psize / 2 - 5, y + psize / 2 - 5, dat.dx*2, dat.dy*2, bulletTex));
-
-                    tillnext = cooldown;
-                }
-            }
-            int i = 0;
-            int cnter = 0;
-            while (cnter < bullets.Count)
-            {
-                bullets[i].Update(); 
-                if (bullets[i].timeAlive > 300) {
-                    bullets.RemoveAt(i);
-                    i--;
-                }
-                
-                i++;
-                cnter++;
-            }
-        }
-
-        public void Draw(SpriteBatch _spb, int cx, int cy)
-        {
-            for (int i = 0; i < bullets.Count; i++)
-            {
-                
-                bullets[i].Draw(_spb,cx,cy);
-            }
-        }
-    }
-
-    public class TilePattern
-    {
-        public List<List<int>> pattern = new List<List<int>>() { };
-        public string id = "";
-        public TilePattern(List<List<int>> pattern, string id)
-        {
-            this.pattern = pattern;
-            this.id = id;
-        }
-        
-        public bool equal(TilePattern other) {
-
-            for (int y1 = -1; y1 < 2; y1++)
-            {
-                for (int x1 = -1; x1 < 2; x1++)
-                {
-                    if (pattern[y1+1][x1+1] == 2)
-                    {
-                        continue;
-                    }
-                    if (other.pattern[y1+1][x1+1] != pattern[y1+1][x1+1])
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-    }
-
     public class Map
     {
-        public Dictionary<int, Texture2D> bindings = new Dictionary<int, Texture2D>{};
+        public Dictionary<int, Texture2D> bindings = new Dictionary<int, Texture2D> { };
         public List<List<double>> map = new List<List<double>> { };
         public int w;
         public int h;
         //public int size = 30;
         public int sw = 49;
         public int sh = 99;
-        
+
         public Texture2D terrain;
         public int tsize = 141;
         public Dictionary<string, Texture2D> tiles;
         public int percentage;
         public List<TilePattern> patterns = new List<TilePattern> { };
-        
+
         public List<List<string>> tileToDraw = new List<List<string>> { };
         public Texture2D _whiteSquare;
         public Texture2D _blackSquare;
-        
+
         public float getPercentage()
         {
             float blocks = 0;
@@ -314,12 +236,12 @@ namespace SurvivorMonogame
                 }
             }
             return blocks * 100 / (w * h);
-            
+
         }
 
         public void addNewClusterBlock(int x, int y, int depth, Random rng)
         {
-            if (y < 0 | y>=h | x <0 | x >= w)
+            if (y < 0 | y >= h | x < 0 | x >= w)
             {
                 return;
             }
@@ -353,7 +275,7 @@ namespace SurvivorMonogame
                 {
                     newX++;
                 }
-                addNewClusterBlock(newX, newY, depth + 1, rng);  
+                addNewClusterBlock(newX, newY, depth + 1, rng);
             }
         }
 
@@ -447,12 +369,12 @@ namespace SurvivorMonogame
                     return "1,-1";
                 }
 
-                return "solo"; 
+                return "solo";
                 return "Error: Tile-picking logic did not pick any tile. Function: Map.whichTile";
             }
         }
 
-        public Map(int w, int h, bool random=true, string randomType="clump", int screenWidth = 1000)
+        public Map(int w, int h, bool random = true, string randomType = "clump", int screenWidth = 1000)
         {
             this.w = w;
             this.h = h;
@@ -469,7 +391,8 @@ namespace SurvivorMonogame
                     map.Add(new List<double> { });
                     for (int j = 0; j < h; j++)
                     {
-                        if (RNG.Next(0, 15) == 0){
+                        if (RNG.Next(0, 15) == 0)
+                        {
                             map[i].Add(100);
                         }
                         else
@@ -524,43 +447,44 @@ namespace SurvivorMonogame
                     }
                 }
             }
-        } 
+        }
         public void Draw(SpriteBatch _spb, int cx, int cy)
         {
-            for (int i = -5; i < sw*w / tsize + 5; i++)
+            for (int i = -5; i < sw * w / tsize + 5; i++)
             {
-                for (int j = -5; j < sh*h / tsize + 1; j++)
+                for (int j = -5; j < sh * h / tsize + 1; j++)
                 {
-                    _spb.Draw(terrain, new Rectangle(i * tsize-cx, j * tsize-cy, tsize, tsize), Color.White);
+                    _spb.Draw(terrain, new Rectangle(i * tsize - cx, j * tsize - cy, tsize, tsize), Color.White);
                 }
             }
 
             for (int i = 0; i < w; i++)
             {
-                
-                
-                
-                
-                
+
                 for (int j = 0; j < h; j++)
                 {
-                    if (map[i][j] >= 1 && i>=1 && i<=w-3 && j>=1 && j<=h-3)
+                    if (map[i][j] >= 1 && i >= 1 && i <= w - 3 && j >= 1 && j <= h - 3)
                     {
                         string tile = whichTile(j, i);
+                        float rot = 0.0f;
                         //string tile = tileToDraw[i][j];
                         if (tile == "None")
-                        _spb.Draw(bindings[1], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
+                        {
+                            var origin = new Vector2(bindings[1].Width / 2f, bindings[1].Height / 2f);
+                            _spb.Draw(bindings[1], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.White);//, rot, origin, SpriteEffects.None,0f);
+                        }
                         else
                         {
-                            _spb.Draw(tiles[tile], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.AliceBlue);
-                            
+                            var origin = new Vector2(tiles[tile].Width / 2f, tiles[tile].Height / 2f);
+                            _spb.Draw(tiles[tile], new Rectangle(j * sw - cx, i * sh - cy, sw, sh), Color.White);//, rot, origin, SpriteEffects.None, 0f);
+
                         }
                         //_spb.Draw(_whiteSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30),Color.Aqua);
                     }
                     else
                     {
                         //_spb.Draw(_blackSquare, new Rectangle(j * sw - cx + 15, i * sh - cy + 15, sw - 30, sh - 30), Color.Aqua);
-                        
+
                     }
                     if (map[i][j] < 0)
                     {
@@ -573,7 +497,269 @@ namespace SurvivorMonogame
                 }
             }
         }
+
     }
+    public class AstarNode
+    {
+        public Vector2 pos;
+        public AstarNode parent;
+        public float manhattan_distance_to_end = float.PositiveInfinity;
+        public float distance_from_start = 0;
+        public float f { get { return manhattan_distance_to_end + distance_from_start; } }
+
+        public AstarNode(Vector2 pos2)
+        {
+            pos = pos2;
+            parent = null;
+        }
+
+        public List<AstarNode> AstarPFind(AstarNode end, Map m)
+        {
+            List<AstarNode> path = new List<AstarNode>();
+            List<AstarNode> open_list = new List<AstarNode> { this };
+            HashSet<AstarNode> closed_list = new HashSet<AstarNode>();
+            
+            while (open_list.Count > 0)
+            {
+                AstarNode currentNode = open_list.OrderBy(n => n.f).First();
+                open_list.Remove(currentNode);
+                closed_list.Add(currentNode);
+
+                if (currentNode.Equals(end))
+                {
+                    while (currentNode != null)
+                    {
+                        path.Add(currentNode);
+                        currentNode = currentNode.parent;
+                    }
+                    path.Reverse();
+                    return path;
+                }
+
+                List<List<int>> directions = new List<List<int>>
+            {
+                new List<int> { 0, -1 },
+                new List<int> { 1, 0 },
+                new List<int> { 0, 1 },
+                new List<int> { -1, 0 },
+                new List<int> {-1,-1},
+                new List<int> {1,-1},
+                new List<int> {1,1},
+                new List<int> {-1,1}
+            };
+
+                foreach (var direction in directions)
+                {
+                    if (direction.Equals(directions[4]) || direction.Equals(directions[5]) || direction.Equals(directions[6])|| direction.Equals(directions[7]))
+                    {
+                        Vector2 new_pos1 = new Vector2(currentNode.pos.X + direction[0], currentNode.pos.Y);
+                        Vector2 new_pos2 = new Vector2(currentNode.pos.X, currentNode.pos.Y + direction[1]);
+                        if (new_pos1.X < 0 || new_pos1.X >= m.map[0].Count || new_pos1.Y < 0 || new_pos1.Y >= m.map.Count)
+                            continue;
+
+                        if (new_pos2.X < 0 || new_pos2.X >= m.map[0].Count || new_pos2.Y < 0 || new_pos2.Y >= m.map.Count)
+                            continue;
+
+                        if (m.map[(int)new_pos1.Y][(int)new_pos1.X] != 0 && m.map[(int)new_pos2.Y][(int)new_pos2.X] !=0)
+                            continue;
+                    }
+                    Vector2 new_pos = new Vector2(currentNode.pos.X + direction[0], currentNode.pos.Y + direction[1]);
+
+                    if (new_pos.X < 0 || new_pos.X >= m.map[0].Count || new_pos.Y < 0 || new_pos.Y >= m.map.Count)
+                        continue;
+
+                    if (m.map[(int)new_pos.Y][(int)new_pos.X] != 0)
+                        continue;
+
+                    AstarNode neighborNode = new AstarNode(new_pos);
+                    if (closed_list.Contains(neighborNode))
+                        continue;
+
+                    neighborNode.parent = currentNode;
+                    neighborNode.distance_from_start = currentNode.distance_from_start + 1;
+                    neighborNode.manhattan_distance_to_end = Math.Abs(end.pos.X - neighborNode.pos.X) + Math.Abs(end.pos.Y - neighborNode.pos.Y);
+
+                    AstarNode existingNode = open_list.FirstOrDefault(n => n.Equals(neighborNode));
+                    if (existingNode != null)
+                    {
+                        if (neighborNode.distance_from_start >= existingNode.distance_from_start)
+                            continue;
+
+                        open_list.Remove(existingNode);
+                    }
+                    open_list.Add(neighborNode);
+                }
+            }
+
+            return path;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is AstarNode other)
+            {
+                return pos.Equals(other.pos);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return pos.GetHashCode();
+        }
+    }
+
+
+    public class AssetManager
+    {
+        public Dictionary<string, Texture2D> assets = new Dictionary<string, Texture2D> { };
+
+        
+    }
+
+    public class Bullet
+    {
+        public int x;
+        public int y;
+        public double dx;
+        public double dy;
+        public int size = 10;
+        public int dmg = 25;
+        public int speed = 5;
+        public int timeAlive = 0;
+
+        Texture2D tex;
+        public Bullet(int x, int y, double xd, double yd, Texture2D te, int size = 10, int dmg = 25)
+        {
+
+
+            this.x = x;
+            this.y = y;
+            dx = xd;
+            dy = yd;
+            this.size = size;
+            this.dmg = dmg;
+            this.tex = te;
+        }
+        public void Update()
+        {
+            try
+            {
+                x += Convert.ToInt32(dx * speed);
+                y += Convert.ToInt32(dy * speed);
+            }
+            catch
+            {
+                return;
+            }
+
+            timeAlive++;
+
+        }
+        public void Draw(SpriteBatch _spb, AssetManager assets, int cx, int cy)
+        {
+            float rotation = (float)Math.Atan2(dy, dx);
+            _spb.Draw(assets.assets["BulletTex"], new Rectangle(x - cx, y - cy, size, size), null, Color.White, rotation, new Vector2(size / 2, size / 2), SpriteEffects.None, 0f);
+        }
+    }
+    public class Weapon
+    {
+        public int damage;
+        public int cooldown;
+        public int tillnext;
+        public Texture2D bulletTex;
+        public List<Bullet> bullets = new List<Bullet> { };
+
+        public static (double dx, double dy) CalculateDirection((double x, double y) start, (double x, double y) target)
+        {
+            double diffX = target.x - start.x;
+            double diffY = target.y - start.y;
+
+            double len = Math.Sqrt(diffX * diffX + diffY * diffY);
+
+            double dx = diffX / len;
+            double dy = diffY / len;
+
+            return (dx, dy);
+        }
+
+        public Weapon(int dmg, int cd, Texture2D bulTex)
+        {
+            damage = dmg;
+            cooldown = cd;
+            bulletTex = bulTex;
+        }
+        public void Update(int x, int y, int psize, int ex, int ey,int ps)
+        {
+            tillnext -= 1;
+
+            double enemyCenterX = ex + 30 / 2.0;
+            double enemyCenterY = ey + 30 / 2.0;
+
+            var start = (Convert.ToDouble(x+ ps / 2), Convert.ToDouble(y+ps/2));
+            var end = (enemyCenterX, enemyCenterY);
+
+            if (tillnext <= 0)
+            {
+                var dat = CalculateDirection(start, end);
+                if (!double.IsNaN(dat.dx) && !double.IsNaN(dat.dy))
+                {
+                    bullets.Add(new Bullet(x + psize / 2 - 5, y + psize / 2 - 5, dat.dx * 2, dat.dy * 2, bulletTex));
+                    tillnext = cooldown;
+                }
+            }
+
+            for (int i = bullets.Count - 1; i >= 0; i--)
+            {
+                bullets[i].Update();
+                if (bullets[i].timeAlive > 300)
+                {
+                    bullets.RemoveAt(i);
+                }
+            }
+        }
+
+        public void Draw(SpriteBatch _spb,AssetManager Assets, int cx, int cy)
+        {
+            for (int i = 0; i < bullets.Count; i++)
+            {
+                
+                bullets[i].Draw(_spb,Assets,cx,cy);
+            }
+        }
+    }
+
+    public class TilePattern
+    {
+        public List<List<int>> pattern = new List<List<int>>() { };
+        public string id = "";
+        public TilePattern(List<List<int>> pattern, string id)
+        {
+            this.pattern = pattern;
+            this.id = id;
+        }
+        
+        public bool equal(TilePattern other) {
+
+            for (int y1 = -1; y1 < 2; y1++)
+            {
+                for (int x1 = -1; x1 < 2; x1++)
+                {
+                    if (pattern[y1+1][x1+1] == 2)
+                    {
+                        continue;
+                    }
+                    if (other.pattern[y1+1][x1+1] != pattern[y1+1][x1+1])
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
+
     public class EnemyMelee : Enemy
     {
         //public int x;
@@ -676,11 +862,11 @@ namespace SurvivorMonogame
             int ox = x;
 
             AstarNode start = new AstarNode(new Vector2(x_tile, y_tile));
-            start.g = 0;
+            start.distance_from_start = 0;
             AstarNode end = new AstarNode(new Vector2(px/m.sw, py/m.sh));
-            start.h = Math.Abs(end.pos.X - start.pos.X) + Math.Abs(end.pos.Y - start.pos.Y);
+            start.manhattan_distance_to_end = Math.Abs(end.pos.X - start.pos.X) + Math.Abs(end.pos.Y - start.pos.Y);
             stop.Start();
-            List < AstarNode> path = start.AstarPFind(end,m);
+            List < AstarNode> path = start.AstarPFind(end,m); 
             stop.Stop();
             if (stop.ElapsedMilliseconds >= 100)
             {
@@ -787,7 +973,7 @@ namespace SurvivorMonogame
         }
         public void Draw(SpriteBatch _spb,int cx, int cy)
         {
-            _spb.Draw(rectTexture, new Rectangle(x-cx, y-cy, size, size), Color.AliceBlue);
+            _spb.Draw(rectTexture, new Rectangle(x-cx-size/2, y-cy-size/2, size, size), Color.AliceBlue);
         }
     }
     
@@ -811,7 +997,9 @@ namespace SurvivorMonogame
         public string currentAnimation = "idle";
         public int currentFrame = 0;
         public float pickaxeDmg = 0.01f;
-        
+
+
+        public HUD hud;
         public Texture2D spriteSheet;
         public Texture2D invSpriteSheet;
 
@@ -831,7 +1019,7 @@ namespace SurvivorMonogame
         public Player(Texture2D recTex, Texture2D bulletTex, Dictionary<String,List<Rectangle>> rects, Dictionary<String, List<Rectangle>> INVrects,int screenWidth=0)
         {
             rectTexture = recTex;
-            weapons.Add(new Weapon(25, 45, bulletTex));
+            weapons.Add(new Weapon(25, 15, bulletTex));
             animationTimes["char_0!death"] = 150;
             animationTimes["char_0!sword_idle"] = 45;
             animationTimes["char_0!run"] = 30;
@@ -846,7 +1034,7 @@ namespace SurvivorMonogame
 
         
 
-        public void Update(Map m, int ex, int ey)
+        public void Update(Map m, int ex, int ey,ParticleManager pm, AssetManager Assets)
         {
             lastFrameMoving += 1;
             
@@ -866,7 +1054,7 @@ namespace SurvivorMonogame
             currentFrame = currentFrame % animationTimes[$"char_0!{currentAnimation}"];
             for (int i = 0; i < weapons.Count; i++)
             {
-                weapons[i].Update(x,y,size, ex, ey);
+                weapons[i].Update(x,y,size, ex, ey,size);
             }
             int y_tile = y / m.sh;
             int x_tile = x / m.sw;
@@ -908,7 +1096,16 @@ namespace SurvivorMonogame
                     flag = true;
                     ncy -= (int)(baseSpeed * 1.5);
                     lastFrameMoving = 0;
+
+                    if (m.map[y_tile - 1][x_tile] != 0)
+                    {
+                        ParticleEmitter emitter = new ParticleEmitter(new Vector2(x_tile * m.sw + m.sw / 2, (y_tile - 1) * m.sh+m.sh/2), Color.Brown, 80, 60, Assets.assets["white"]);
+                        emitter.lifetime = 0.20f;
+                        emitter.size = 500;
+                        pm.AddEmitter(emitter);
+                    }
                     m.map[y_tile - 1][x_tile] = Math.Max(m.map[y_tile - 1][x_tile] - pickaxeDmg, 0);
+                    
                     if (m.map[y_tile - 1][x_tile] < 1) m.map[y_tile - 1][x_tile] = 0;
                 }
             }
@@ -921,7 +1118,15 @@ namespace SurvivorMonogame
 
                     flag = true;
                     lastFrameMoving = 0;
+                    if (m.map[y_tile + 1][x_tile] != 0)
+                    {
+                        ParticleEmitter emitter = new ParticleEmitter(new Vector2(x_tile * m.sw + m.sw / 2, (y_tile + 1) * m.sh + m.sh / 2), Color.Brown, 80, 60, Assets.assets["white"]);
+                        emitter.lifetime = 0.20f;
+                        emitter.size = 500;
+                        pm.AddEmitter(emitter);
+                    }
                     m.map[y_tile + 1][x_tile] = Math.Max(m.map[y_tile + 1][x_tile] - pickaxeDmg, 0);
+                    
                     if (m.map[y_tile + 1][x_tile] < 1) m.map[y_tile + 1][x_tile] = 0;
                 }
             }
@@ -963,6 +1168,13 @@ namespace SurvivorMonogame
                     ncx -= baseSpeed;
                     lastFrameMoving = 0;
                     facing = "l";
+                    if (m.map[y_tile][x_tile - 1] != 0)
+                    {
+                        ParticleEmitter emitter = new ParticleEmitter(new Vector2((x_tile - 1) * m.sw+m.sw/2, y_tile * m.sh + m.sh / 2), Color.Brown, 80, 60, Assets.assets["white"]);
+                        emitter.lifetime = 0.20f;
+                        emitter.size = 500;
+                        pm.AddEmitter(emitter);
+                    }
                     m.map[y_tile][x_tile - 1] = Math.Max(m.map[y_tile][x_tile - 1] - pickaxeDmg, 0);
                     if (m.map[y_tile][x_tile - 1] < 1) m.map[y_tile][x_tile - 1] = 0;
                 }
@@ -976,7 +1188,15 @@ namespace SurvivorMonogame
                     flag = true;
                     lastFrameMoving = 0;
                     facing = "r";
+                    if (m.map[y_tile][x_tile + 1] != 0)
+                    {
+                        ParticleEmitter emitter = new ParticleEmitter(new Vector2((x_tile + 1) * m.sw + m.sw / 2, y_tile * m.sh + m.sh / 2), Color.Brown, 80, 60, Assets.assets["white"]);
+                        emitter.lifetime = 0.20f;
+                        emitter.size = 500;
+                        pm.AddEmitter(emitter);
+                    }
                     m.map[y_tile][x_tile + 1] = Math.Max(m.map[y_tile][x_tile + 1] - pickaxeDmg, 0);
+                    
                     if (m.map[y_tile][x_tile + 1] < 1) m.map[y_tile][x_tile + 1] = 0;
                 }
             }
@@ -1006,11 +1226,12 @@ namespace SurvivorMonogame
             }
         }
 
-        public void Draw(SpriteBatch _spb)
+        public void Draw(SpriteBatch _spb, AssetManager Assets)
         {
+            hud.Draw(_spb);
             for (int i = 0; i < weapons.Count; i++)
             {
-                weapons[i].Draw(_spb, cx, cy);
+                weapons[i].Draw(_spb, Assets,cx, cy);
             }
             // Debug draw
             //_spb.Draw(rectTexture, new Rectangle(x - cx, y - cy, size, size), Color.Red);
@@ -1146,7 +1367,7 @@ namespace SurvivorMonogame
         bool isFadingIn;
 
         private static Random random = new Random();
-        private static double roughness = 0.5;
+        private static double roughness = 1.5;
         public static List<List<double>> GenerateMap(List<List<double>> m1, int x1, int y1, int x2, int y2, int depth = 0)
         {
             if (depth > 12)
@@ -1262,8 +1483,8 @@ namespace SurvivorMonogame
             int y = -1;
             while (true)
             {
-                x = RNG.Next(1, m1.w - 1);
-                y = RNG.Next(1, m1.h - 1);
+                x = RNG.Next(1, m1.w/2 - 1);
+                y = RNG.Next(1, m1.h/2 - 1);
                 if (m1.map[y][x] == 0)
                 {
                     return new Vector2(x, y);
@@ -1521,8 +1742,8 @@ namespace SurvivorMonogame
                 {
                     Dictionary<string, int> upgrades = JsonSerializer.Deserialize<Dictionary<string, int>>(jsonDat);
                     player.pickaxeDmg = upgrades["mine_speed"];
-                    player.pickaxeDmg = 0.2f;
-                    player.baseSpeed = upgrades["speed"];
+                    player.pickaxeDmg = 0.4f;
+                    player.baseSpeed = upgrades["speed"]*2;
                     player.weapons[0].damage *= Convert.ToInt32(1 + upgrades["damage"] / 10);
                     player.weapons[0].cooldown -= upgrades["reload_speed"];
                     shopUpgrades = upgrades;
@@ -1549,7 +1770,7 @@ namespace SurvivorMonogame
         }
 
         public double cutoff;
-
+        public ParticleManager particleManager;
         protected override void Initialize()
         {
             Inputs.init();
@@ -1565,6 +1786,10 @@ namespace SurvivorMonogame
             Texture2D red = new Texture2D(GraphicsDevice, 1, 1);
             red.SetData(new Color[] { Color.Red });
 
+            Texture2D white = new Texture2D(GraphicsDevice, 1, 1);
+            white.SetData(new Color[] { Color.White });
+            Assets.assets["white"] = white;
+            particleManager = new ParticleManager();
 
             Texture2D playerRect = new Texture2D(GraphicsDevice, 1, 1);
             playerRect.SetData(new Color[] { Color.ForestGreen });
@@ -1590,10 +1815,16 @@ namespace SurvivorMonogame
             m12[0][99] = random.Next(5, 25);
             m12[99][99] = random.Next(5, 25);
 
-            //m12[0][0] = 15;
-            //m12[99][0] = 16;
-            //m12[0][99] = 14;
-            //m12[99][99] = 17;
+            Console.WriteLine(m12[0][0]);
+            Console.WriteLine(m12[99][0]);
+            Console.WriteLine(m12[0][99]);
+            Console.WriteLine(m12[99][99]);
+
+            m12[0][0] = 17;
+            m12[99][0] = 0;
+            m12[0][99] = 20;
+            m12[99][99] = 20;
+
 
             
 
@@ -1642,13 +1873,22 @@ namespace SurvivorMonogame
 
             player = new Player(playerRect, red, pSprites, InvPSprites,screenWidth:W);
             Vector2 pPos = FindSpawn(map1);
+            //pPos = new Vector2(2286, 11512);
             player.x = Convert.ToInt32(pPos.X) * map1.sw;// + map1.size / 2;
-            player.cx = Convert.ToInt32(pPos.X) * map1.sw - 250;
+            player.cx = Convert.ToInt32(pPos.X) * map1.sw - W/2+player.size;
             player.y = Convert.ToInt32(pPos.Y) * map1.sh;// + map1.size / 2;
-            player.cy = Convert.ToInt32(pPos.Y) * map1.sh - 250;
+            player.cy = Convert.ToInt32(pPos.Y) * map1.sh - H/2+player.size;
             player.bulletTex = red;
             Texture2D spritesheet = Content.Load<Texture2D>("Jotem spritesheet");
             Texture2D invspritesheet = Content.Load<Texture2D>("JotemInverted");
+
+            HUD pHud = new HUD();
+            pHud.W = W;
+            pHud.H = H;
+            pHud.pfp = Content.Load<Texture2D>("pfpedited");
+            pHud.weaponslots = Content.Load<Texture2D>("weaponslots");
+            player.hud = pHud;
+            
 
             player.spriteSheet = spritesheet;
             player.invSpriteSheet = invspritesheet;
@@ -1714,10 +1954,10 @@ namespace SurvivorMonogame
             map1.terrain = terrain;
 
             basicFont = Content.Load<SpriteFont>("BasicFont");
-
+            Texture2D bulletgTex = Content.Load<Texture2D>("bullet pixel art");
             Texture2D tent = Content.Load<Texture2D>("EnemyMeleeTentacles");
             Assets.assets.Add("EnemyMeleeTentacles", tent);
-
+            Assets.assets.Add("BulletTex", bulletgTex);
             Dictionary<string, List<Rectangle>> tentacle_tex = LoadCustomSpritesheet(new List<string> { "move" }, new List<int> { 5 }, EnemyMeleeTentacle.w, EnemyMeleeTentacle.h,691);
                   
 
@@ -1778,6 +2018,7 @@ namespace SurvivorMonogame
 
             if (screen == "game")
             {
+                particleManager.Update(0.0167f);
                 cdLeft -= 1;
                 if (cdLeft <= 0)
                 {
@@ -1791,7 +2032,7 @@ namespace SurvivorMonogame
                     }
                 }
                 int enemyToTarget = findNearestEnemy(player.x, player.y);
-                player.Update(map1, enemies[enemyToTarget].x, enemies[enemyToTarget].y);
+                player.Update(map1, enemies[enemyToTarget].x, enemies[enemyToTarget].y,particleManager,Assets);
                 for (int i = 0; i < enemies.Count; i++)
                 {
                     enemies[i].Update(map1, player.x, player.y);
@@ -1805,16 +2046,21 @@ namespace SurvivorMonogame
 
                         for (int j = 0; j < enemies.Count; j++)
                         {
-                            if (new Rectangle(enemies[j].x, enemies[j].y, enemies[j].size, enemies[j].size).Contains(new Rectangle(weapon.bullets[i].x, weapon.bullets[i].y, weapon.bullets[i].size, weapon.bullets[i].size)))
+                            if (new Rectangle(enemies[j].x - enemies[j].size/2, enemies[j].y - enemies[j].size / 2, enemies[j].size, enemies[j].size).Intersects(new Rectangle(weapon.bullets[i].x- weapon.bullets[i].size/2, weapon.bullets[i].y- weapon.bullets[i].size/2, weapon.bullets[i].size, weapon.bullets[i].size)))
                             {
                                 enemies[j].health -= weapon.bullets[i].dmg;
+                                ParticleEmitter emitter = new ParticleEmitter(new Vector2(enemies[j].x, enemies[j].y), Color.Red, 200, 80, Assets.assets["white"]);
+                                emitter.lifetime = 0.45f;
+                                particleManager.AddEmitter(emitter);
                             }
                             if (enemies[j].health <= 0)
                             {
                                 Vector2 enemyPos = FindSpawn(map1);
-
+                                ParticleEmitter emitter = new ParticleEmitter(new Vector2(enemies[j].x, enemies[j].y), Color.Red, 200, 80, Assets.assets["white"]);
+                                particleManager.AddEmitter(emitter);
                                 enemies.Add(new EnemyMeleeTentacle(Convert.ToInt32(enemyPos.X)*map1.sw, Convert.ToInt32(enemyPos.Y)*map1.sh, enemies[j].rectTexture, enemies[j].spriteRects));
-                enemies.RemoveAt(j);
+                                emitter.lifetime = 0.45f;
+                                enemies.RemoveAt(j);
 
                             }
                         }
@@ -1847,8 +2093,10 @@ namespace SurvivorMonogame
 
         protected override void Draw(GameTime gameTime)
         {
+
             GraphicsDevice.Clear(Color.CornflowerBlue);
-            _spriteBatch.Begin();
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+
             if (screen == "main")
             {
                 GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -1884,8 +2132,8 @@ namespace SurvivorMonogame
                 GraphicsDevice.Clear(Color.Beige);
                 
                 map1.Draw(_spriteBatch, player.cx, player.cy);
-                player.Draw(_spriteBatch);
-
+                player.Draw(_spriteBatch,Assets);
+                particleManager.Draw(_spriteBatch, player.cx, player.cy);
                 for (int i = 0; i < enemies.Count; i++)
                 {
                     enemies[i].Draw(_spriteBatch,Assets, player.cx, player.cy);
@@ -1898,3 +2146,4 @@ namespace SurvivorMonogame
         }
     }
 }
+
